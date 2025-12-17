@@ -1,0 +1,1 @@
+"""FairCareAI Dashboard Pages."""
