@@ -16,7 +16,10 @@ def get_audience_mode() -> str:
     Returns:
         "data_scientist" or "governance"
     """
-    return st.session_state.get("audience_mode", "governance")
+    value = st.session_state.get("audience_mode")
+    if isinstance(value, str) and value in ("data_scientist", "governance"):
+        return value
+    return "governance"
 
 
 def set_audience_mode(mode: str) -> None:

@@ -6,6 +6,8 @@ with consistent error handling, format support, and publication-ready defaults.
 
 Supported formats:
 - PNG: High-resolution raster (default 2x scale for retina)
+- JPEG: Compressed raster format
+- WEBP: Modern compressed raster format
 - PDF: Vector format for publications
 - SVG: Scalable vector format
 - HTML: Interactive web format
@@ -19,7 +21,7 @@ Example:
 """
 
 from pathlib import Path
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Literal, cast
 
 from faircareai.core.exceptions import FairCareAIError
 from faircareai.core.logging import get_logger
@@ -30,8 +32,10 @@ if TYPE_CHECKING:
 
 logger = get_logger(__name__)
 
-# Type alias for supported export formats
-ExportFormat = Literal["png", "pdf", "svg", "html", "json"]
+# Type aliases for supported export formats
+PlotlyExportFormat = Literal["png", "pdf", "svg", "html", "json", "jpeg", "webp"]
+AltairExportFormat = Literal["png", "pdf", "svg", "html", "json"]
+ExportFormat = PlotlyExportFormat
 
 # Formats requiring kaleido engine
 RASTER_FORMATS = {"png", "jpeg", "webp"}
@@ -66,7 +70,7 @@ class FigureExportError(FairCareAIError):
 def export_plotly_figure(
     fig: "go.Figure",
     path: str | Path,
-    format: ExportFormat | None = None,
+    format: PlotlyExportFormat | None = None,
     width: int = 1200,
     height: int = 800,
     scale: float = 2.0,
@@ -100,13 +104,14 @@ def export_plotly_figure(
 
     # Infer format from extension if not specified
     if format is None:
-        format = path.suffix.lstrip(".").lower()
-        if not format:
+        inferred_format = path.suffix.lstrip(".").lower()
+        if not inferred_format:
             raise FigureExportError(
                 format="unknown",
                 reason="No format specified and could not infer from path extension",
                 path=path,
             )
+        format = cast(PlotlyExportFormat, inferred_format)
 
     # Validate format
     valid_formats = {"png", "pdf", "svg", "html", "json", "jpeg", "webp"}
@@ -178,7 +183,7 @@ def export_plotly_figure(
 def export_altair_chart(
     chart: "alt.Chart | alt.LayerChart | alt.HConcatChart | alt.VConcatChart",
     path: str | Path,
-    format: ExportFormat | None = None,
+    format: AltairExportFormat | None = None,
     scale_factor: float = 2.0,
 ) -> Path:
     """Export Altair chart to a static file.
@@ -209,13 +214,14 @@ def export_altair_chart(
 
     # Infer format from extension if not specified
     if format is None:
-        format = path.suffix.lstrip(".").lower()
-        if not format:
+        inferred_format = path.suffix.lstrip(".").lower()
+        if not inferred_format:
             raise FigureExportError(
                 format="unknown",
                 reason="No format specified and could not infer from path extension",
                 path=path,
             )
+        format = cast(AltairExportFormat, inferred_format)
 
     # Validate format
     valid_formats = {"png", "pdf", "svg", "html", "json"}
@@ -274,7 +280,7 @@ def export_altair_chart(
 def export_figure_bundle(
     fig: "go.Figure | alt.Chart",
     base_path: str | Path,
-    formats: list[ExportFormat] | None = None,
+    formats: list[PlotlyExportFormat] | None = None,
     width: int = 1200,
     height: int = 800,
     scale: float = 2.0,
@@ -325,7 +331,18 @@ def export_figure_bundle(
                 )
             else:
                 # Assume Altair chart
-                export_altair_chart(fig, export_path, format=fmt, scale_factor=scale)
+                if fmt not in {"png", "pdf", "svg", "html", "json"}:
+                    raise FigureExportError(
+                        format=fmt,
+                        reason="Unsupported format for Altair chart export",
+                        path=export_path,
+                    )
+                export_altair_chart(
+                    fig,
+                    export_path,
+                    format=cast(AltairExportFormat, fmt),
+                    scale_factor=scale,
+                )
             results[fmt] = export_path
         except FigureExportError as e:
             errors.append(f"{fmt}: {e.reason}")

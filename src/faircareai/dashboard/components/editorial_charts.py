@@ -1,13 +1,15 @@
 """
-NYT-Style Chart Components
+Editorial Chart Components
 
-Editorial design patterns inspired by New York Times data visualization:
+Publication-ready design patterns for data visualization:
 - Headline-first design
 - Direct labeling (values on data points)
 - Contextual annotations
 - Source attribution
 - Clean, minimal aesthetic
 """
+
+from typing import Any, cast
 
 import plotly.graph_objects as go
 import polars as pl
@@ -21,17 +23,17 @@ from faircareai.visualization.themes import (
     get_plotly_template,
 )
 
-# Use unified TYPOGRAPHY which now includes NYT editorial extensions
+# Use unified TYPOGRAPHY which includes editorial extensions
 # (headline_size, deck_size, annotation_size, source_size, callout_size)
 
 
-def create_nyt_layout(
+def create_editorial_layout(
     title: str,
     subtitle: str | None = None,
     source_note: str | None = None,
     height: int = 450,
 ) -> dict:
-    """Create NYT-style layout configuration.
+    """Create publication-ready layout configuration.
 
     Args:
         title: Main headline.
@@ -43,9 +45,9 @@ def create_nyt_layout(
         Layout configuration dictionary.
     """
     template = get_plotly_template()
-    layout = template.get("layout", {}).copy()
+    layout = cast(dict[str, Any], template.get("layout", {})).copy()
 
-    # NYT headline styling
+    # Editorial headline styling
     layout["title"] = {
         "text": f"<b>{title}</b>"
         + (
@@ -137,11 +139,11 @@ def generate_chart_headline(
     return "Analysis Results"
 
 
-def add_nyt_annotations(
+def add_editorial_annotations(
     fig: go.Figure,
     annotations: list[dict],
 ) -> go.Figure:
-    """Add NYT-style editorial annotations to chart.
+    """Add editorial annotations to chart.
 
     Args:
         fig: Plotly Figure.
@@ -215,7 +217,7 @@ def add_nyt_annotations(
     return fig
 
 
-def create_nyt_forest_plot(
+def create_editorial_forest_plot(
     metrics_df: pl.DataFrame,
     metric: str,
     headline: str | None = None,
@@ -226,7 +228,7 @@ def create_nyt_forest_plot(
     threshold: float = 0.1,
     show_direct_labels: bool = True,
 ) -> go.Figure:
-    """Create NYT-style forest plot with editorial enhancements.
+    """Create publication-ready forest plot with editorial enhancements.
 
     Args:
         metrics_df: DataFrame with columns: group, {metric}, ci_lower, ci_upper, n.
@@ -333,7 +335,7 @@ def create_nyt_forest_plot(
             )
         )
 
-        # Direct label (NYT style)
+        # Direct label (publication style)
         if show_direct_labels:
             fig.add_annotation(
                 x=val,
@@ -347,7 +349,7 @@ def create_nyt_forest_plot(
 
     # Add contextual annotation
     if annotation_text:
-        add_nyt_annotations(
+        add_editorial_annotations(
             fig,
             [
                 {
@@ -363,8 +365,8 @@ def create_nyt_forest_plot(
             ],
         )
 
-    # Apply NYT layout
-    layout = create_nyt_layout(headline, subtitle, source_note)
+    # Apply editorial layout
+    layout = create_editorial_layout(headline, subtitle, source_note)
     layout["xaxis"] = {
         "title": metric.upper(),
         "tickformat": ".0%",
@@ -384,7 +386,7 @@ def create_nyt_forest_plot(
     return fig
 
 
-def create_nyt_bar_chart(
+def create_editorial_bar_chart(
     data: pl.DataFrame,
     x_col: str,
     y_col: str,
@@ -394,7 +396,7 @@ def create_nyt_bar_chart(
     highlight_bars: list[str] | None = None,
     show_direct_labels: bool = True,
 ) -> go.Figure:
-    """Create NYT-style bar chart with direct labeling.
+    """Create publication-ready bar chart with direct labeling.
 
     Args:
         data: DataFrame with data.
@@ -432,7 +434,7 @@ def create_nyt_bar_chart(
         )
     )
 
-    layout = create_nyt_layout(headline or y_col.title(), subtitle, source_note)
+    layout = create_editorial_layout(headline or y_col.title(), subtitle, source_note)
     layout["yaxis"]["tickformat"] = ".0%"
     layout["showlegend"] = False
 
@@ -441,7 +443,7 @@ def create_nyt_bar_chart(
     return fig
 
 
-def create_nyt_line_chart(
+def create_editorial_line_chart(
     data: pl.DataFrame,
     x_col: str,
     y_cols: list[str],
@@ -451,7 +453,7 @@ def create_nyt_line_chart(
     highlight_point: float | None = None,
     y_format: str = ".1%",
 ) -> go.Figure:
-    """Create NYT-style line chart with end labels.
+    """Create publication-ready line chart with end labels.
 
     Args:
         data: DataFrame with data.
@@ -484,7 +486,7 @@ def create_nyt_line_chart(
             )
         )
 
-        # NYT-style end label
+        # Publication-style end label
         fig.add_annotation(
             x=x_values[-1],
             y=y_values[-1],
@@ -504,7 +506,7 @@ def create_nyt_line_chart(
             annotation_text=f"Current: {highlight_point:{y_format}}",
         )
 
-    layout = create_nyt_layout(headline or "Trend Analysis", subtitle, source_note)
+    layout = create_editorial_layout(headline or "Trend Analysis", subtitle, source_note)
     layout["yaxis"]["tickformat"] = y_format
     layout["showlegend"] = False  # Using end labels instead
 
@@ -519,7 +521,7 @@ def create_scorecard_figure(
     fail_count: int,
     headline: str = "Audit Results",
 ) -> go.Figure:
-    """Create NYT-style scorecard as a Plotly figure.
+    """Create publication-ready scorecard as a Plotly figure.
 
     Args:
         pass_count: Number of passing checks.
@@ -548,7 +550,7 @@ def create_scorecard_figure(
             )
         )
 
-    layout = create_nyt_layout(headline)
+    layout = create_editorial_layout(headline)
     layout["height"] = 150
     layout["margin"] = {"l": 20, "r": 20, "t": 60, "b": 20}
 

@@ -7,11 +7,26 @@ Provides standardized descriptive statistics by sensitive attribute.
 Methodology: CHAI RAIC Checkpoint 1 (population characteristics).
 """
 
-from typing import Any
+from typing import Any, cast
 
 import numpy as np
 import polars as pl
 from scipy import stats
+
+
+def _pivot_compat(
+    df: pl.DataFrame,
+    *,
+    index: str,
+    columns: str,
+    values: str,
+) -> pl.DataFrame:
+    pivot = cast(Any, df).pivot
+    try:
+        result = pivot(columns=columns, index=index, values=values)
+    except TypeError:
+        result = pivot(on=columns, index=index, values=values)
+    return cast(pl.DataFrame, result)
 
 
 def compute_cohort_summary(
@@ -214,11 +229,9 @@ def compute_outcome_rate_statistics(
         Dict containing chi-square test results and effect sizes.
     """
     # Create contingency table
-    crosstab = (
-        df.group_by(group_col, y_true_col)
-        .len()
-        .pivot(columns=y_true_col, index=group_col, values="len")
-        .fill_null(0)
+    grouped = df.group_by(group_col, y_true_col).len()
+    crosstab = _pivot_compat(grouped, columns=y_true_col, index=group_col, values="len").fill_null(
+        0
     )
 
     # Get column names for outcomes

@@ -1,0 +1,1994 @@
+"""
+FairCareAI Report Generator
+
+This module generates governance-ready reports in multiple formats:
+- PDF: Formal audit report using WeasyPrint
+- PPTX: PowerPoint deck for board presentations
+- HTML: Standalone interactive dashboard with all 7 sections
+
+Report Structure (per newspec.md):
+1. Executive Summary - Results summary
+2. Descriptive Statistics - Table 1 cohort summary
+3. Overall Performance - TRIPOD+AI metrics
+4. Subgroup Performance - Performance by sensitive attribute
+5. Fairness Assessment - Fairness metrics analysis
+6. Limitations & Flags - Warnings and errors
+7. Governance Decision Block - Sign-off section
+
+Methodology: Van Calster et al. (2025), CHAI RAIC Checkpoint 1.
+"""
+
+from dataclasses import dataclass
+from datetime import date
+from pathlib import Path
+from typing import TYPE_CHECKING, Any
+
+import polars as pl
+
+from faircareai.visualization.themes import (
+    GOVERNANCE_DISCLAIMER_FULL,
+    SEMANTIC_COLORS,
+    TYPOGRAPHY,
+)
+
+if TYPE_CHECKING:
+    from faircareai.core.config import MetricDisplayConfig
+    from faircareai.core.results import AuditResults
+
+
+@dataclass
+class AuditSummary:
+    """Container for audit summary data."""
+
+    model_name: str
+    audit_date: str
+    n_samples: int
+    n_groups: int
+    threshold: float
+    pass_count: int
+    warn_count: int
+    fail_count: int
+    worst_disparity_group: str
+    worst_disparity_metric: str
+    worst_disparity_value: float
+    metrics_df: pl.DataFrame | None = None
+    disparities_df: pl.DataFrame | None = None
+
+
+def generate_pdf_report(
+    summary: AuditSummary,
+    output_path: str | Path,
+    include_charts: bool = True,
+    metric_config: "MetricDisplayConfig | None" = None,
+) -> Path:
+    """
+    Generate a formal PDF audit report.
+
+    Uses WeasyPrint for CSS Paged Media support.
+
+    Van Calster et al. (2025) Metric Display:
+    -----------------------------------------
+    By default, reports show only RECOMMENDED metrics. Pass a MetricDisplayConfig
+    with show_optional=True to include OPTIONAL metrics (Brier, O:E ratio, etc.).
+
+    Args:
+        summary: AuditSummary with audit results
+        output_path: Path for output PDF file
+        include_charts: If True, embed charts as SVG
+        metric_config: MetricDisplayConfig controlling which metrics to display.
+            If None, defaults to RECOMMENDED metrics only.
+
+    Returns:
+        Path to generated PDF file
+    """
+    try:
+        from weasyprint import CSS, HTML
+    except ImportError as err:
+        raise ImportError(
+            "WeasyPrint is required for PDF generation. Install with: pip install 'faircareai[export]'"
+        ) from err
+
+    output_path = Path(output_path)
+
+    # Generate HTML content
+    html_content = _generate_report_html(summary, include_charts)
+
+    # CSS for print layout
+    print_css = CSS(string=_get_print_css())
+
+    # Generate PDF
+    HTML(string=html_content).write_pdf(
+        str(output_path.resolve()),
+        stylesheets=[print_css],
+    )
+
+    return output_path
+
+
+def generate_pptx_deck(
+    summary: AuditSummary,
+    output_path: str | Path,
+) -> Path:
+    """
+    Generate a PowerPoint governance deck.
+
+    Args:
+        summary: AuditSummary with audit results
+        output_path: Path for output PPTX file
+
+    Returns:
+        Path to generated PPTX file
+    """
+    try:
+        from pptx import Presentation
+        from pptx.util import Inches
+    except ImportError as err:
+        raise ImportError(
+            "python-pptx is required for PowerPoint generation. "
+            "Install with: pip install 'faircareai[export]'"
+        ) from err
+
+    output_path = Path(output_path)
+
+    # Create presentation
+    prs = Presentation()
+    prs.slide_width = Inches(13.333)  # 16:9 aspect ratio
+    prs.slide_height = Inches(7.5)
+
+    # Slide 1: Title
+    _add_title_slide(prs, summary)
+
+    # Slide 2: Executive Summary
+    _add_summary_slide(prs, summary)
+
+    # Slide 3: Key Findings
+    _add_findings_slide(prs, summary)
+
+    # Slide 4: Recommendations
+    _add_recommendations_slide(prs, summary)
+
+    # Save presentation
+    prs.save(str(output_path.resolve()))
+
+    return output_path
+
+
+def generate_html_report(
+    results: "AuditResults",
+    output_path: str | Path,
+    standalone: bool = True,
+    metric_config: "MetricDisplayConfig | None" = None,
+) -> Path:
+    """
+    Generate a comprehensive HTML report with all 7 governance sections.
+
+    If standalone=True, embeds all CSS/JS for offline viewing.
+
+    Van Calster et al. (2025) Metric Display:
+    -----------------------------------------
+    By default, reports show only RECOMMENDED metrics. Pass a MetricDisplayConfig
+    with show_optional=True to include OPTIONAL metrics (Brier, O:E ratio, etc.).
+
+    Args:
+        results: AuditResults from FairCareAudit.run()
+        output_path: Path for output HTML file
+        standalone: If True, embed all assets
+        metric_config: MetricDisplayConfig controlling which metrics to display.
+            If None, defaults to RECOMMENDED metrics only.
+
+    Returns:
+        Path to generated HTML file
+    """
+    output_path = Path(output_path)
+
+    html_content = _generate_full_report_html(results)
+
+    if standalone:
+        # Embed Plotly.js for interactive charts
+        html_content = html_content.replace(
+            "</head>",
+            '<script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script></head>',
+        )
+
+    with open(output_path, "w", encoding="utf-8") as f:
+        f.write(html_content)
+
+    return output_path
+
+
+def _generate_full_report_html(results: "AuditResults") -> str:
+    """Generate comprehensive HTML report with all 7 sections."""
+
+    gov = results.governance_recommendation
+
+    # Determine status
+    status = gov.get("status", "REVIEW")
+    status_colors = {
+        "READY": SEMANTIC_COLORS["pass"],
+        "CONDITIONAL": SEMANTIC_COLORS["warn"],
+        "REVIEW": SEMANTIC_COLORS["fail"],
+    }
+    status_color = status_colors.get(status, SEMANTIC_COLORS["fail"])
+
+    # Generate sections
+    section1_html = _generate_executive_summary_section(results, status, status_color)
+    section2_html = _generate_descriptive_section(results)
+    section3_html = _generate_performance_section(results)
+    section4_html = _generate_subgroup_section(results)
+    section5_html = _generate_fairness_section(results)
+    section6_html = _generate_flags_section(results)
+    section7_html = _generate_governance_section(results)
+
+    html = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FairCareAI Audit Report: {results.config.model_name}</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+        :root {{
+            --pass-color: {SEMANTIC_COLORS["pass"]};
+            --warn-color: {SEMANTIC_COLORS["warn"]};
+            --fail-color: {SEMANTIC_COLORS["fail"]};
+            --bg-color: #f8f9fa;
+            --text-color: #212529;
+            --primary-color: #2c5282;
+            --secondary-color: #4a5568;
+            --border-color: #e2e8f0;
+        }}
+
+        * {{ box-sizing: border-box; }}
+
+        /* JAMA Scientific Publication Style - Large, Clear, Readable */
+        body {{
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            font-size: {TYPOGRAPHY["body_size"]}px;  /* 18px - JAMA readable */
+            color: var(--text-color);
+            background-color: var(--bg-color);
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+        }}
+
+        .container {{
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }}
+
+        h1, h2, h3 {{
+            font-weight: 600;
+            color: var(--primary-color);
+            margin-top: 0;
+        }}
+
+        /* JAMA-style large headers */
+        h1 {{ font-size: {TYPOGRAPHY["heading_size"]}px; margin-bottom: 12px; }}  /* 40px */
+        h2 {{ font-size: {TYPOGRAPHY["subheading_size"]}px; margin-top: 40px; border-bottom: 2px solid var(--primary-color); padding-bottom: 10px; }}  /* 32px */
+        h3 {{ font-size: {TYPOGRAPHY["h3_size"]}px; margin-top: 28px; color: var(--secondary-color); }}  /* 28px */
+
+        .header {{
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+        }}
+
+        /* JAMA readable metadata */
+        .metadata {{ color: #666; font-size: {TYPOGRAPHY["label_size"]}px; }}  /* 18px */
+
+        .status-badge {{
+            display: inline-block;
+            padding: 14px 28px;
+            border-radius: 6px;
+            font-weight: 700;
+            font-size: {TYPOGRAPHY["h3_size"]}px;  /* 28px - prominent */
+            color: white;
+            background-color: {status_color};
+            margin: 16px 0;
+        }}
+
+        .section {{
+            background: white;
+            padding: 28px;
+            border-radius: 8px;
+            margin-bottom: 24px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }}
+
+        .scorecard {{
+            display: flex;
+            gap: 20px;
+            margin: 24px 0;
+            flex-wrap: wrap;
+        }}
+
+        .scorecard-item {{
+            flex: 1;
+            min-width: 140px;
+            text-align: center;
+            padding: 20px;
+            border-radius: 8px;
+            background: var(--bg-color);
+        }}
+
+        /* JAMA large scorecard numbers */
+        .scorecard-value {{
+            font-size: {TYPOGRAPHY["heading_size"]}px;  /* 40px - prominent */
+            font-weight: 700;
+        }}
+
+        .scorecard-label {{
+            font-size: {TYPOGRAPHY["label_size"]}px;  /* 18px - readable */
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }}
+
+        .pass {{ color: var(--pass-color); }}
+        .warn {{ color: var(--warn-color); }}
+        .fail {{ color: var(--fail-color); }}
+
+        /* JAMA-style readable tables */
+        table {{
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            font-size: {TYPOGRAPHY["label_size"]}px;  /* 18px - readable */
+        }}
+
+        th, td {{
+            padding: 14px 16px;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }}
+
+        th {{
+            background: var(--bg-color);
+            font-weight: 600;
+            font-size: {TYPOGRAPHY["label_size"]}px;  /* 18px */
+            color: var(--secondary-color);
+        }}
+
+        tr:hover {{ background: rgba(0,0,0,0.02); }}
+
+        .flag-item {{
+            padding: 12px 16px;
+            border-radius: 6px;
+            margin: 8px 0;
+            border-left: 4px solid;
+        }}
+
+        .flag-error {{
+            background: rgba(213,94,0,0.1);
+            border-color: var(--fail-color);
+        }}
+
+        .flag-warning {{
+            background: rgba(240,228,66,0.2);
+            border-color: var(--warn-color);
+        }}
+
+        .governance-block {{
+            background: #f7fafc;
+            border: 2px solid var(--primary-color);
+            padding: 24px;
+            border-radius: 8px;
+            margin-top: 30px;
+        }}
+
+        .signature-line {{
+            border-bottom: 1px solid #333;
+            width: 250px;
+            margin-top: 40px;
+            display: inline-block;
+        }}
+
+        .footer {{
+            margin-top: 40px;
+            padding: 20px;
+            text-align: center;
+            font-size: 14px;
+            color: #666;
+            border-top: 1px solid var(--border-color);
+        }}
+
+        .metric-grid {{
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }}
+
+        .metric-card {{
+            background: var(--bg-color);
+            padding: 20px;
+            border-radius: 6px;
+        }}
+
+        /* JAMA large metric values */
+        .metric-value {{
+            font-size: {TYPOGRAPHY["subheading_size"]}px;  /* 32px - prominent */
+            font-weight: 700;
+            color: var(--primary-color);
+        }}
+
+        .metric-label {{
+            font-size: {TYPOGRAPHY["label_size"]}px;  /* 18px - readable */
+            color: #666;
+        }}
+
+        .chart-placeholder {{
+            background: var(--bg-color);
+            padding: 40px;
+            text-align: center;
+            border-radius: 6px;
+            color: #666;
+            font-size: {TYPOGRAPHY["body_size"]}px;
+        }}
+
+        @media print {{
+            body {{ background: white; }}
+            .section {{ box-shadow: none; border: 1px solid #ddd; }}
+            .container {{ max-width: 100%; }}
+        }}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>FairCareAI Audit Report</h1>
+            <p class="metadata">
+                <strong>Model:</strong> {results.config.model_name} v{results.config.model_version}<br>
+                <strong>Report Date:</strong> {results.config.report_date or date.today().isoformat()}<br>
+                <strong>Primary Fairness Metric:</strong> {results.config.primary_fairness_metric.value if results.config.primary_fairness_metric else "Not specified"}
+            </p>
+        </header>
+
+        {section1_html}
+        {section2_html}
+        {section3_html}
+        {section4_html}
+        {section5_html}
+        {section6_html}
+        {section7_html}
+
+        <footer class="footer">
+            <p>{GOVERNANCE_DISCLAIMER_FULL}</p>
+            <p>Generated by FairCareAI on {date.today().isoformat()}</p>
+        </footer>
+    </div>
+</body>
+</html>"""
+
+    return html
+
+
+def _generate_executive_summary_section(
+    results: "AuditResults", status: str, status_color: str
+) -> str:
+    """Generate Section 1: Executive Summary."""
+    gov = results.governance_recommendation
+    n_pass = gov.get("n_pass", 0)
+    n_warnings = gov.get("n_warnings", 0)
+    n_errors = gov.get("n_errors", 0)
+    advisory = gov.get("advisory", "")
+
+    status_text = {
+        "READY": "Within Threshold",
+        "CONDITIONAL": "Near Threshold",
+        "REVIEW": "Outside Threshold",
+    }
+
+    return f"""
+    <section class="section">
+        <h2>Section 1: Executive Summary</h2>
+        <div class="status-badge">{status_text.get(status, status)}</div>
+
+        <div class="scorecard">
+            <div class="scorecard-item">
+                <div class="scorecard-value pass">{n_pass}</div>
+                <div class="scorecard-label">Pass</div>
+            </div>
+            <div class="scorecard-item">
+                <div class="scorecard-value warn">{n_warnings}</div>
+                <div class="scorecard-label">Warnings</div>
+            </div>
+            <div class="scorecard-item">
+                <div class="scorecard-value fail">{n_errors}</div>
+                <div class="scorecard-label">Critical</div>
+            </div>
+        </div>
+
+        <p><strong>Advisory:</strong> {advisory}</p>
+        <p style="font-size: 16px; color: #666; font-style: italic;">
+            This is an advisory assessment. Final deployment decisions rest with the governance committee.
+        </p>
+    </section>
+    """
+
+
+def _generate_descriptive_section(results: "AuditResults") -> str:
+    """Generate Section 2: Descriptive Statistics (Table 1)."""
+    desc = results.descriptive_stats
+    overview = desc.get("cohort_overview", {})
+    pred_dist = desc.get("prediction_distribution", {})
+
+    # Build attribute rows
+    attr_rows = ""
+    attr_dist = desc.get("attribute_distributions", {})
+    outcome_by_attr = desc.get("outcome_by_attribute", {})
+
+    for attr_name, attr_data in attr_dist.items():
+        groups = attr_data.get("groups", {})
+        outcome_groups = outcome_by_attr.get(attr_name, {}).get("groups", {})
+        reference = outcome_by_attr.get(attr_name, {}).get("reference")
+
+        for group_name, group_data in groups.items():
+            outcome_data = outcome_groups.get(group_name, {})
+            rr = outcome_data.get("rate_ratio")
+            rr_str = f"{rr:.2f}" if rr is not None else "ref"
+            ref_marker = " (ref)" if group_name == reference else ""
+
+            attr_rows += f"""
+            <tr>
+                <td>{attr_name}</td>
+                <td>{group_name}{ref_marker}</td>
+                <td>{group_data.get("n", 0):,}</td>
+                <td>{group_data.get("pct_fmt", "N/A")}</td>
+                <td>{outcome_data.get("outcome_rate_pct", "N/A")}</td>
+                <td>{rr_str}</td>
+            </tr>
+            """
+
+    return f"""
+    <section class="section">
+        <h2>Section 2: Descriptive Statistics (Table 1)</h2>
+
+        <h3>Cohort Overview</h3>
+        <div class="metric-grid">
+            <div class="metric-card">
+                <div class="metric-value">{overview.get("n_total", 0):,}</div>
+                <div class="metric-label">Total Patients</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value">{overview.get("n_positive", 0):,}</div>
+                <div class="metric-label">Outcome Positive</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value">{overview.get("prevalence_pct", "N/A")}</div>
+                <div class="metric-label">Prevalence</div>
+            </div>
+        </div>
+
+        <h3>Prediction Score Distribution</h3>
+        <div class="metric-grid">
+            <div class="metric-card">
+                <div class="metric-value">{pred_dist.get("mean", 0):.3f}</div>
+                <div class="metric-label">Mean Score</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value">{pred_dist.get("median", 0):.3f}</div>
+                <div class="metric-label">Median Score</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value">{pred_dist.get("std", 0):.3f}</div>
+                <div class="metric-label">Std Dev</div>
+            </div>
+        </div>
+
+        <h3>Characteristics by Group</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Attribute</th>
+                    <th>Group</th>
+                    <th>N</th>
+                    <th>%</th>
+                    <th>Outcome Rate</th>
+                    <th>Rate Ratio</th>
+                </tr>
+            </thead>
+            <tbody>
+                {attr_rows}
+            </tbody>
+        </table>
+    </section>
+    """
+
+
+def _generate_performance_section(results: "AuditResults") -> str:
+    """Generate Section 3: Overall Model Performance (TRIPOD+AI)."""
+    perf = results.overall_performance
+    disc = perf.get("discrimination", {})
+    cal = perf.get("calibration", {})
+    cls = perf.get("classification_at_threshold", {})
+
+    auroc = disc.get("auroc", 0)
+    auroc_ci = disc.get("auroc_ci_fmt", "")
+    auprc = disc.get("auprc", 0)
+    brier = cal.get("brier_score", 0)
+    slope = cal.get("calibration_slope", 1.0)
+    threshold = cls.get("threshold", 0.5)
+
+    # Add interpretation guidance
+    auroc_interp = (
+        "Excellent" if auroc >= 0.8 else "Acceptable" if auroc >= 0.7 else "Below standard"
+    )
+    brier_interp = (
+        "Excellent" if brier < 0.15 else "Acceptable" if brier < 0.25 else "Needs improvement"
+    )
+    slope_interp = "Well calibrated" if 0.8 <= slope <= 1.2 else "May need recalibration"
+
+    return f"""
+    <section class="section">
+        <h2>Section 3: Overall Model Performance (TRIPOD+AI)</h2>
+
+        <h3>Discrimination: How Well Does the Model Separate Outcomes?</h3>
+        <div class="metric-grid">
+            <div class="metric-card">
+                <div class="metric-value">{auroc:.3f}</div>
+                <div class="metric-label">AUROC {auroc_ci}</div>
+                <div style="margin-top: 8px; font-size: 14px; color: #666;">
+                    <strong>{auroc_interp}</strong> (0.5=random, 1.0=perfect)
+                </div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value">{auprc:.3f}</div>
+                <div class="metric-label">AUPRC (Precision-Recall)</div>
+                <div style="margin-top: 8px; font-size: 14px; color: #666;">
+                    Area under precision-recall curve
+                </div>
+            </div>
+        </div>
+
+        <h3>Calibration: Do Predicted Risks Match Reality?</h3>
+        <div class="metric-grid">
+            <div class="metric-card">
+                <div class="metric-value">{brier:.4f}</div>
+                <div class="metric-label">Brier Score (lower is better)</div>
+                <div style="margin-top: 8px; font-size: 14px; color: #666;">
+                    <strong>{brier_interp}</strong> (&lt;0.15=excellent)
+                </div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value">{slope:.2f}</div>
+                <div class="metric-label">Calibration Slope (ideal: 1.00)</div>
+                <div style="margin-top: 8px; font-size: 14px; color: #666;">
+                    <strong>{slope_interp}</strong> (0.8-1.2=good)
+                </div>
+            </div>
+        </div>
+
+        <h3>Classification at Threshold = {threshold:.2f}</h3>
+        <p style="color: #666; font-size: 14px; margin-bottom: 16px;">
+            At this risk cutoff, here's what happens to patients:
+        </p>
+        <div class="metric-grid">
+            <div class="metric-card">
+                <div class="metric-value">{cls.get("sensitivity", 0) * 100:.1f}%</div>
+                <div class="metric-label">Sensitivity (TPR)</div>
+                <div style="margin-top: 8px; font-size: 14px; color: #666;">
+                    % of actual cases correctly identified
+                </div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value">{cls.get("specificity", 0) * 100:.1f}%</div>
+                <div class="metric-label">Specificity (TNR)</div>
+                <div style="margin-top: 8px; font-size: 14px; color: #666;">
+                    % without condition correctly identified
+                </div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value">{cls.get("ppv", 0) * 100:.1f}%</div>
+                <div class="metric-label">PPV (Precision)</div>
+                <div style="margin-top: 8px; font-size: 14px; color: #666;">
+                    When flagged positive, % truly positive
+                </div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value">{cls.get("pct_flagged", 0):.1f}%</div>
+                <div class="metric-label">% Flagged High Risk</div>
+                <div style="margin-top: 8px; font-size: 14px; color: #666;">
+                    Proportion identified for intervention
+                </div>
+            </div>
+        </div>
+
+        <div class="chart-placeholder">
+            [Interactive ROC and Calibration curves available in HTML version]
+        </div>
+    </section>
+    """
+
+
+def _generate_subgroup_section(results: "AuditResults") -> str:
+    """Generate Section 4: Subgroup Performance."""
+    subgroup_rows = ""
+
+    for attr_name, attr_data in results.subgroup_performance.items():
+        if not isinstance(attr_data, dict):
+            continue
+
+        for group_name, group_data in attr_data.items():
+            if not isinstance(group_data, dict) or "error" in group_data:
+                continue
+
+            auroc = group_data.get("auroc")
+            auroc_str = f"{auroc:.3f}" if auroc is not None else "N/A"
+            tpr = group_data.get("tpr")
+            tpr_str = f"{tpr * 100:.1f}%" if tpr is not None else "N/A"
+            fpr = group_data.get("fpr")
+            fpr_str = f"{fpr * 100:.1f}%" if fpr is not None else "N/A"
+            ref_marker = " (ref)" if group_data.get("is_reference") else ""
+
+            subgroup_rows += f"""
+            <tr>
+                <td>{attr_name}</td>
+                <td>{group_name}{ref_marker}</td>
+                <td>{group_data.get("n", 0):,}</td>
+                <td>{auroc_str}</td>
+                <td>{tpr_str}</td>
+                <td>{fpr_str}</td>
+            </tr>
+            """
+
+    return f"""
+    <section class="section">
+        <h2>Section 4: Subgroup Performance</h2>
+
+        <p style="color: #666; font-size: 16px; margin-bottom: 20px;">
+            <strong>What to look for:</strong> Performance should be similar across all demographic groups.
+            Large differences in AUROC (&gt;0.05) or TPR/FPR (&gt;10 percentage points) may indicate fairness concerns.
+        </p>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Attribute</th>
+                    <th>Group</th>
+                    <th>Sample Size</th>
+                    <th>AUROC<br><span style="font-weight: normal; font-size: 12px;">(accuracy)</span></th>
+                    <th>TPR<br><span style="font-weight: normal; font-size: 12px;">(sensitivity)</span></th>
+                    <th>FPR<br><span style="font-weight: normal; font-size: 12px;">(false alarms)</span></th>
+                </tr>
+            </thead>
+            <tbody>
+                {subgroup_rows}
+            </tbody>
+        </table>
+
+        <div style="margin-top: 20px; padding: 16px; background: #f8f9fa; border-left: 4px solid #0072B2; border-radius: 4px;">
+            <h4 style="margin-top: 0; color: #0072B2;">Interpreting These Metrics:</h4>
+            <ul style="margin-bottom: 0;">
+                <li><strong>AUROC:</strong> Model's ability to rank patients (0.7+ acceptable, 0.8+ strong)</li>
+                <li><strong>TPR (Sensitivity):</strong> % of actual cases caught by the model (higher is better)</li>
+                <li><strong>FPR:</strong> % incorrectly flagged (lower is better, means fewer false alarms)</li>
+                <li><strong>(ref):</strong> Reference group used for fairness comparisons</li>
+            </ul>
+        </div>
+
+        <div class="chart-placeholder">
+            [Interactive subgroup comparison charts available in HTML version]
+        </div>
+    </section>
+    """
+
+
+def _generate_fairness_section(results: "AuditResults") -> str:
+    """Generate Section 5: Fairness Assessment."""
+    config = results.config
+    metric = config.primary_fairness_metric
+    justification = config.fairness_justification or "Not provided"
+
+    fairness_rows = ""
+    for attr_name, attr_data in results.fairness_metrics.items():
+        if not isinstance(attr_data, dict):
+            continue
+
+        summary = attr_data.get("summary", {})
+
+        # Equal opportunity
+        eo = summary.get("equal_opportunity", {})
+        eo_diff = eo.get("worst_diff", 0) if eo else 0
+        eo_pass = eo.get("within_threshold", True) if eo else True
+        eo_status = "PASS" if eo_pass else "FLAG"
+        eo_class = "pass" if eo_pass else "fail"
+
+        # Equalized odds
+        eq = summary.get("equalized_odds", {})
+        eq_diff = eq.get("worst_diff", 0) if eq else 0
+        eq_pass = eq.get("within_threshold", True) if eq else True
+        eq_status = "PASS" if eq_pass else "FLAG"
+        eq_class = "pass" if eq_pass else "fail"
+
+        fairness_rows += f'''
+        <tr>
+            <td>{attr_name}</td>
+            <td>{abs(eo_diff):.3f}</td>
+            <td class="{eo_class}">{eo_status}</td>
+            <td>{eq_diff:.3f}</td>
+            <td class="{eq_class}">{eq_status}</td>
+        </tr>
+        '''
+
+    return f"""
+    <section class="section">
+        <h2>Section 5: Fairness Assessment</h2>
+
+        <h3>Selected Fairness Metric</h3>
+        <p><strong>Primary Metric:</strong> {metric.value if metric else "Not specified"}</p>
+        <p><strong>Justification:</strong> {justification}</p>
+
+        <h3>Fairness Metrics by Attribute</h3>
+        <p style="color: #666; font-size: 16px; margin-bottom: 16px;">
+            <strong>What to look for:</strong> Differences less than 0.10 (10 percentage points) are typically acceptable.
+            Larger differences may indicate the model treats groups differently.
+        </p>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Attribute</th>
+                    <th>TPR Difference<br><span style="font-weight: normal; font-size: 12px;">(Equal Opportunity)</span></th>
+                    <th>Status</th>
+                    <th>Equalized Odds Diff<br><span style="font-weight: normal; font-size: 12px;">(TPR + FPR)</span></th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {fairness_rows}
+            </tbody>
+        </table>
+
+        <div style="margin-top: 20px; padding: 16px; background: #fffdf0; border-left: 4px solid #F0E442; border-radius: 4px;">
+            <h4 style="margin-top: 0; color: #856404;">Understanding Fairness Metrics:</h4>
+            <ul style="margin-bottom: 0;">
+                <li><strong>TPR Difference (Equal Opportunity):</strong> Do all groups have similar rates of correctly identified cases?
+                    Large differences mean the model "misses" more cases in certain groups.</li>
+                <li><strong>Equalized Odds:</strong> Combines both true positive rate and false positive rate differences.
+                    Measures overall fairness in both detecting cases and avoiding false alarms.</li>
+                <li><strong>Impossibility Theorem:</strong> When base rates (prevalence) differ between groups,
+                    no model can satisfy all fairness criteria simultaneously. Trade-offs are necessary.</li>
+                <li><strong>Threshold:</strong> Differences &lt;0.10 are generally acceptable in healthcare AI.</li>
+            </ul>
+        </div>
+    </section>
+    """
+
+
+def _generate_flags_section(results: "AuditResults") -> str:
+    """Generate Section 6: Flags and Warnings."""
+    flags_html = ""
+
+    for flag in results.flags:
+        severity = flag.get("severity", "warning")
+        flag_class = "flag-error" if severity == "error" else "flag-warning"
+        message = flag.get("message", "")
+        details = flag.get("details", "")
+
+        flags_html += f"""
+        <div class="flag-item {flag_class}">
+            <strong>{severity.upper()}:</strong> {message}
+            {f"<br><small>{details}</small>" if details else ""}
+        </div>
+        """
+
+    if not flags_html:
+        flags_html = '<p style="color: green;">No flags or warnings raised.</p>'
+
+    return f"""
+    <section class="section">
+        <h2>Section 6: Flags and Warnings</h2>
+        {flags_html}
+    </section>
+    """
+
+
+def _generate_governance_section(results: "AuditResults") -> str:
+    """Generate Section 7: Governance Decision Block."""
+    config = results.config
+    gov = results.governance_recommendation
+
+    return f"""
+    <section class="section governance-block">
+        <h2>Section 7: Governance Decision</h2>
+
+        <p><strong>Model:</strong> {config.model_name} v{config.model_version}</p>
+        <p><strong>Intended Use:</strong> {config.intended_use or "Not specified"}</p>
+        <p><strong>Intended Population:</strong> {config.intended_population or "Not specified"}</p>
+        <p><strong>Advisory Status:</strong> {gov.get("status", "REVIEW")}</p>
+
+        <h3>Decision</h3>
+        <p>
+            <input type="checkbox" id="approve"> <label for="approve">APPROVE for deployment</label><br>
+            <input type="checkbox" id="conditional"> <label for="conditional">APPROVE with conditions</label><br>
+            <input type="checkbox" id="defer"> <label for="defer">DEFER pending additional review</label><br>
+            <input type="checkbox" id="reject"> <label for="reject">DO NOT APPROVE</label>
+        </p>
+
+        <h3>Conditions/Comments</h3>
+        <p style="border: 1px solid #ccc; min-height: 60px; padding: 8px; background: white;"></p>
+
+        <h3>Signatures</h3>
+        <p>
+            <span class="signature-line"></span><br>
+            <small>Governance Committee Chair</small>
+        </p>
+        <p>
+            <span class="signature-line"></span><br>
+            <small>Clinical Lead</small>
+        </p>
+        <p>
+            <span class="signature-line"></span><br>
+            <small>Date</small>
+        </p>
+
+        <p style="font-size: 16px; color: #666; margin-top: 24px; font-style: italic;">
+            {GOVERNANCE_DISCLAIMER_FULL}
+        </p>
+    </section>
+    """
+
+
+def _generate_report_html(
+    summary: AuditSummary,
+    include_charts: bool = True,
+) -> str:
+    """Generate the HTML content for the report."""
+
+    from faircareai.visualization.tables import create_plain_language_summary
+
+    # Determine overall status based on threshold results
+    if summary.fail_count > 0:
+        overall_status = "Outside Threshold"
+        status_color = SEMANTIC_COLORS["fail"]
+    elif summary.warn_count > 0:
+        overall_status = "Near Threshold"
+        status_color = SEMANTIC_COLORS["warn"]
+    else:
+        overall_status = "Within Threshold"
+        status_color = SEMANTIC_COLORS["pass"]
+
+    # Generate plain language summary
+    plain_summary = create_plain_language_summary(
+        summary.pass_count,
+        summary.warn_count,
+        summary.fail_count,
+        summary.worst_disparity_group,
+        summary.worst_disparity_metric,
+        summary.worst_disparity_value,
+    )
+
+    # Generate charts as SVG if requested
+    charts_html = ""
+    if include_charts and summary.metrics_df is not None:
+        try:
+            from faircareai.visualization.altair_plots import create_forest_plot_static
+
+            chart = create_forest_plot_static(summary.metrics_df, metric="tpr")
+            charts_html = f'<div class="chart-container">{chart.to_html()}</div>'
+        except Exception:
+            charts_html = '<p class="chart-placeholder">Charts could not be generated.</p>'
+
+    html = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FairCare Equity Audit Report: {summary.model_name}</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Merriweather:wght@300;400;700&family=Inter:wght@400;500;600&display=swap');
+
+        :root {{
+            --pass-color: {SEMANTIC_COLORS["pass"]};
+            --warn-color: {SEMANTIC_COLORS["warn"]};
+            --fail-color: {SEMANTIC_COLORS["fail"]};
+            --bg-color: {SEMANTIC_COLORS["background"]};
+            --text-color: {SEMANTIC_COLORS["text"]};
+        }}
+
+        * {{
+            box-sizing: border-box;
+        }}
+
+        body {{
+            font-family: {TYPOGRAPHY["data_font"]};
+            font-size: {TYPOGRAPHY["body_size"]}px;
+            color: var(--text-color);
+            background-color: var(--bg-color);
+            line-height: 1.6;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }}
+
+        h1, h2, h3 {{
+            font-family: {TYPOGRAPHY["heading_font"]};
+            font-weight: {TYPOGRAPHY["heading_weight"]};
+            color: var(--text-color);
+        }}
+
+        h1 {{
+            font-size: 28px;
+            margin-bottom: 8px;
+        }}
+
+        h2 {{
+            font-size: 22px;
+            margin-top: 40px;
+            border-bottom: 2px solid var(--text-color);
+            padding-bottom: 8px;
+        }}
+
+        .header {{
+            border-bottom: 3px solid var(--text-color);
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+        }}
+
+        .metadata {{
+            color: #666;
+            font-size: 14px;
+        }}
+
+        .status-badge {{
+            display: inline-block;
+            padding: 8px 20px;
+            border-radius: 4px;
+            font-weight: bold;
+            font-size: 18px;
+            color: white;
+            background-color: {status_color};
+            margin: 16px 0;
+        }}
+
+        .scorecard {{
+            display: flex;
+            gap: 20px;
+            margin: 24px 0;
+        }}
+
+        .scorecard-item {{
+            flex: 1;
+            text-align: center;
+            padding: 20px;
+            border-radius: 8px;
+            background: white;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }}
+
+        .scorecard-value {{
+            font-size: 36px;
+            font-weight: bold;
+        }}
+
+        .scorecard-label {{
+            font-size: 14px;
+            color: #666;
+            text-transform: uppercase;
+        }}
+
+        .pass {{ color: var(--pass-color); }}
+        .warn {{ color: var(--warn-color); }}
+        .fail {{ color: var(--fail-color); }}
+
+        .summary-section {{
+            background: white;
+            padding: 24px;
+            border-radius: 8px;
+            margin: 24px 0;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }}
+
+        .chart-container {{
+            margin: 24px 0;
+        }}
+
+        .footer {{
+            margin-top: 60px;
+            padding-top: 20px;
+            border-top: 1px solid #ddd;
+            font-size: 12px;
+            color: #666;
+        }}
+
+        @media print {{
+            body {{
+                max-width: 100%;
+                padding: 20px;
+            }}
+        }}
+    </style>
+</head>
+<body>
+    <header class="header">
+        <h1>Equity Audit Report</h1>
+        <p class="metadata">
+            Model: <strong>{summary.model_name}</strong><br>
+            Audit Date: {summary.audit_date}<br>
+            Samples: {summary.n_samples:,} | Groups: {summary.n_groups} | Threshold: {summary.threshold:.0%}
+        </p>
+    </header>
+
+    <section>
+        <div class="status-badge">{overall_status}</div>
+
+        <div class="scorecard">
+            <div class="scorecard-item">
+                <div class="scorecard-value pass">{summary.pass_count}</div>
+                <div class="scorecard-label">Pass</div>
+            </div>
+            <div class="scorecard-item">
+                <div class="scorecard-value warn">{summary.warn_count}</div>
+                <div class="scorecard-label">Review</div>
+            </div>
+            <div class="scorecard-item">
+                <div class="scorecard-value fail">{summary.fail_count}</div>
+                <div class="scorecard-label">Flag</div>
+            </div>
+        </div>
+        <p style="font-size: 16px; color: #666; margin-top: 8px;">
+            <em>Advisory guidance — final deployment decisions rest with clinical stakeholders</em>
+        </p>
+    </section>
+
+    <section class="summary-section">
+        {plain_summary}
+    </section>
+
+    <h2>Detailed Analysis</h2>
+    {charts_html}
+
+    <footer class="footer">
+        <p>
+            Generated by FairCareAI |
+            Report generated on {date.today().isoformat()}
+        </p>
+    </footer>
+</body>
+</html>"""
+
+    return html
+
+
+def _get_print_css() -> str:
+    """Get CSS for print/PDF output."""
+    return """
+    @page {
+        size: letter;
+        margin: 1in;
+
+        @top-right {
+            content: "FairCareAI Audit Report";
+            font-size: 10pt;
+            color: #666;
+        }
+
+        @bottom-center {
+            content: counter(page) " of " counter(pages);
+            font-size: 10pt;
+            color: #666;
+        }
+    }
+
+    @page :first {
+        @top-right { content: none; }
+    }
+
+    body {
+        font-size: 12pt;
+    }
+
+    h1 { page-break-after: avoid; }
+    h2 { page-break-after: avoid; }
+
+    .scorecard {
+        page-break-inside: avoid;
+    }
+
+    .chart-container {
+        page-break-inside: avoid;
+    }
+    """
+
+
+def _add_title_slide(prs: Any, summary: AuditSummary) -> None:
+    """Add title slide to presentation with JAMA-style typography."""
+    from pptx.util import Inches, Pt
+
+    slide_layout = prs.slide_layouts[6]  # Blank layout
+    slide = prs.slides.add_slide(slide_layout)
+
+    # Title - JAMA style large, clear (44pt from TYPOGRAPHY)
+    title_box = slide.shapes.add_textbox(Inches(0.5), Inches(2.5), Inches(12), Inches(1))
+    tf = title_box.text_frame
+    p = tf.paragraphs[0]
+    p.text = "Equity Audit Report"
+    p.font.size = Pt(TYPOGRAPHY["ppt_title_size"])  # 44pt
+    p.font.bold = True
+
+    # Subtitle - JAMA style readable (32pt)
+    subtitle_box = slide.shapes.add_textbox(Inches(0.5), Inches(3.7), Inches(12), Inches(0.5))
+    tf = subtitle_box.text_frame
+    p = tf.paragraphs[0]
+    p.text = summary.model_name
+    p.font.size = Pt(TYPOGRAPHY["ppt_subtitle_size"])  # 32pt
+
+    # Date - readable body text (24pt)
+    date_box = slide.shapes.add_textbox(Inches(0.5), Inches(4.5), Inches(12), Inches(0.5))
+    tf = date_box.text_frame
+    p = tf.paragraphs[0]
+    p.text = f"Audit Date: {summary.audit_date}"
+    p.font.size = Pt(TYPOGRAPHY["ppt_body_size"])  # 24pt
+
+
+def _add_summary_slide(prs: Any, summary: AuditSummary) -> None:
+    """Add executive summary slide with JAMA-style typography."""
+    from pptx.dml.color import RGBColor
+    from pptx.util import Inches, Pt
+
+    slide_layout = prs.slide_layouts[6]
+    slide = prs.slides.add_slide(slide_layout)
+
+    # Title - JAMA style (36pt from subheading)
+    title_box = slide.shapes.add_textbox(Inches(0.5), Inches(0.5), Inches(12), Inches(0.7))
+    tf = title_box.text_frame
+    p = tf.paragraphs[0]
+    p.text = "Executive Summary"
+    p.font.size = Pt(TYPOGRAPHY["headline_size"])  # 36pt
+    p.font.bold = True
+
+    # Status based on threshold results
+    if summary.fail_count > 0:
+        status = "Outside Threshold"
+        color = RGBColor(0xD5, 0x5E, 0x00)  # Vermillion
+    elif summary.warn_count > 0:
+        status = "Near Threshold"
+        color = RGBColor(0xF0, 0xE4, 0x42)  # Yellow
+    else:
+        status = "Within Threshold"
+        color = RGBColor(0x00, 0x9E, 0x73)  # Green
+
+    status_box = slide.shapes.add_textbox(Inches(0.5), Inches(1.5), Inches(4), Inches(0.7))
+    tf = status_box.text_frame
+    p = tf.paragraphs[0]
+    p.text = status
+    p.font.size = Pt(TYPOGRAPHY["ppt_subtitle_size"])  # 32pt - prominent status
+    p.font.bold = True
+    p.font.color.rgb = color
+
+    # Metrics - using advisory terminology (large readable)
+    metrics_text = (
+        f"PASS: {summary.pass_count}    REVIEW: {summary.warn_count}    FLAG: {summary.fail_count}"
+    )
+    metrics_box = slide.shapes.add_textbox(Inches(0.5), Inches(2.5), Inches(12), Inches(0.5))
+    tf = metrics_box.text_frame
+    p = tf.paragraphs[0]
+    p.text = metrics_text
+    p.font.size = Pt(TYPOGRAPHY["ppt_body_size"])  # 24pt
+
+    # Sample info - readable label size
+    info_box = slide.shapes.add_textbox(Inches(0.5), Inches(3.5), Inches(12), Inches(0.5))
+    tf = info_box.text_frame
+    p = tf.paragraphs[0]
+    p.text = f"N = {summary.n_samples:,} | {summary.n_groups} demographic groups | Threshold: {summary.threshold:.0%}"
+    p.font.size = Pt(TYPOGRAPHY["ppt_label_size"])  # 20pt
+
+
+def _add_findings_slide(prs: Any, summary: AuditSummary) -> None:
+    """Add key findings slide with JAMA-style typography."""
+    from pptx.util import Inches, Pt
+
+    slide_layout = prs.slide_layouts[6]
+    slide = prs.slides.add_slide(slide_layout)
+
+    # Title - JAMA style (36pt)
+    title_box = slide.shapes.add_textbox(Inches(0.5), Inches(0.5), Inches(12), Inches(0.7))
+    tf = title_box.text_frame
+    p = tf.paragraphs[0]
+    p.text = "Key Finding"
+    p.font.size = Pt(TYPOGRAPHY["headline_size"])  # 36pt
+    p.font.bold = True
+
+    # Finding text - large readable body text
+    disparity_pct = abs(summary.worst_disparity_value) * 100
+    finding_text = (
+        f"The largest disparity was found in {summary.worst_disparity_metric} "
+        f"for the {summary.worst_disparity_group} group, "
+        f"which differs by {disparity_pct:.1f}% from the reference group."
+    )
+
+    finding_box = slide.shapes.add_textbox(Inches(0.5), Inches(1.5), Inches(12), Inches(2))
+    tf = finding_box.text_frame
+    tf.word_wrap = True
+    p = tf.paragraphs[0]
+    p.text = finding_text
+    p.font.size = Pt(TYPOGRAPHY["ppt_body_size"])  # 24pt - readable
+
+
+def _add_recommendations_slide(prs: Any, summary: AuditSummary) -> None:
+    """Add methodology slide with JAMA-style typography."""
+    from pptx.util import Inches, Pt
+
+    slide_layout = prs.slide_layouts[6]
+    slide = prs.slides.add_slide(slide_layout)
+
+    # Title - JAMA style (36pt)
+    title_box = slide.shapes.add_textbox(Inches(0.5), Inches(0.5), Inches(12), Inches(0.7))
+    tf = title_box.text_frame
+    p = tf.paragraphs[0]
+    p.text = "Methodology"
+    p.font.size = Pt(TYPOGRAPHY["headline_size"])  # 36pt
+    p.font.bold = True
+
+    # Methodology information - readable body text
+    methodology_text = [
+        "Analysis Methodology",
+        "",
+        "Metrics computed per Van Calster B, Collins GS, Vickers AJ, et al.",
+        '"Evaluation of performance measures in predictive artificial',
+        'intelligence models to support medical decisions."',
+        "Lancet Digit Health 2025.",
+        "",
+        "Results Summary:",
+        f"  - Within threshold: {summary.pass_count} metrics",
+        f"  - Near threshold: {summary.warn_count} metrics",
+        f"  - Outside threshold: {summary.fail_count} metrics",
+        "",
+        "Healthcare organizations interpret these results based on",
+        "clinical context, organizational values, and governance frameworks.",
+    ]
+
+    rec_box = slide.shapes.add_textbox(Inches(0.5), Inches(1.5), Inches(12), Inches(4))
+    tf = rec_box.text_frame
+    tf.word_wrap = True
+
+    for i, line in enumerate(methodology_text):
+        if i == 0:
+            p = tf.paragraphs[0]
+        else:
+            p = tf.add_paragraph()
+        p.text = line
+        p.font.size = Pt(TYPOGRAPHY["ppt_label_size"])  # 20pt - readable
+        p.space_after = Pt(8)
+
+
+# === Alias for PPTX generation ===
+generate_pptx_report = generate_pptx_deck
+
+
+# === GOVERNANCE PERSONA REPORT GENERATORS ===
+
+
+def generate_governance_html_report(
+    results: "AuditResults",
+    output_path: str | Path,
+    metric_config: "MetricDisplayConfig | None" = None,
+) -> Path:
+    """Generate streamlined HTML report for governance committees.
+
+    Creates a 3-5 page equivalent report with:
+    - Executive Summary (traffic light status, pass/warn/fail counts)
+    - Overall Performance (4 key figures)
+    - Subgroup Performance (4 figures per attribute)
+    - Recommendations and Sign-off
+
+    Van Calster et al. (2025) Metric Display:
+    -----------------------------------------
+    Governance reports always show only RECOMMENDED metrics regardless of
+    metric_config settings. The parameter is accepted for API consistency
+    but OPTIONAL metrics are never shown in governance output.
+
+    Args:
+        results: AuditResults from FairCareAudit.run()
+        output_path: Path for output HTML file
+        metric_config: MetricDisplayConfig (ignored - governance shows RECOMMENDED only).
+
+    Returns:
+        Path to generated HTML file
+    """
+    output_path = Path(output_path)
+
+    html_content = _generate_governance_html(results)
+
+    # Embed Plotly.js for interactive charts
+    html_content = html_content.replace(
+        "</head>",
+        '<script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script></head>',
+    )
+
+    with open(output_path, "w", encoding="utf-8") as f:
+        f.write(html_content)
+
+    return output_path
+
+
+def generate_governance_pdf_report(
+    results: "AuditResults",
+    output_path: str | Path,
+    metric_config: "MetricDisplayConfig | None" = None,
+) -> Path:
+    """Generate streamlined PDF report for governance committees.
+
+    Creates a 3-5 page report with key figures and plain language summaries.
+
+    Van Calster et al. (2025) Metric Display:
+    -----------------------------------------
+    Governance reports always show only RECOMMENDED metrics regardless of
+    metric_config settings. The parameter is accepted for API consistency
+    but OPTIONAL metrics are never shown in governance output.
+
+    Args:
+        results: AuditResults from FairCareAudit.run()
+        output_path: Path for output PDF file
+        metric_config: MetricDisplayConfig (ignored - governance shows RECOMMENDED only).
+
+    Returns:
+        Path to generated PDF file
+    """
+    try:
+        from weasyprint import CSS, HTML
+    except ImportError as err:
+        raise ImportError(
+            "WeasyPrint is required for PDF generation. Install with: pip install 'faircareai[export]'"
+        ) from err
+
+    output_path = Path(output_path)
+
+    html_content = _generate_governance_html(results)
+    print_css = CSS(string=_get_governance_print_css())
+
+    HTML(string=html_content).write_pdf(
+        str(output_path.resolve()),
+        stylesheets=[print_css],
+    )
+
+    return output_path
+
+
+def _generate_governance_html(results: "AuditResults") -> str:
+    """Generate streamlined HTML content for governance persona."""
+
+    gov = results.governance_recommendation
+
+    # Compute status from error/warning counts (don't rely on 'status' key)
+    n_errors = gov.get("n_errors", gov.get("outside_threshold_count", 0))
+    n_warnings = gov.get("n_warnings", gov.get("near_threshold_count", 0))
+
+    if n_errors > 0:
+        status = "REVIEW"
+    elif n_warnings > 0:
+        status = "CONDITIONAL"
+    else:
+        status = "READY"
+
+    status_colors = {
+        "READY": SEMANTIC_COLORS["pass"],
+        "CONDITIONAL": SEMANTIC_COLORS["warn"],
+        "REVIEW": SEMANTIC_COLORS["fail"],
+    }
+    status_color = status_colors.get(status, SEMANTIC_COLORS["fail"])
+    # Use detection language - describe what was found, not what to do
+    status_text = {
+        "READY": "No Issues Detected",
+        "CONDITIONAL": "Issues Near Threshold",
+        "REVIEW": "Issues Exceeded Threshold",
+    }
+
+    # Generate figures
+    try:
+        overall_figures_html = _render_governance_overall_figures(results)
+    except Exception:
+        overall_figures_html = (
+            '<p class="chart-placeholder">Overall figures could not be generated.</p>'
+        )
+
+    try:
+        subgroup_figures_html = _render_governance_subgroup_figures(results)
+    except Exception:
+        subgroup_figures_html = (
+            '<p class="chart-placeholder">Subgroup figures could not be generated.</p>'
+        )
+
+    # Plain language summary (use computed values from above)
+    n_pass = gov.get("n_pass", gov.get("within_threshold_count", 0))
+
+    # Generate plain language findings
+    plain_findings = _generate_plain_language_findings(results)
+
+    html = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FairCareAI Governance Report: {results.config.model_name}</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+        :root {{
+            --pass-color: {SEMANTIC_COLORS["pass"]};
+            --warn-color: {SEMANTIC_COLORS["warn"]};
+            --fail-color: {SEMANTIC_COLORS["fail"]};
+            --bg-color: #ffffff;
+            --text-color: #212529;
+            --primary-color: #2c5282;
+        }}
+
+        * {{ box-sizing: border-box; }}
+
+        body {{
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            font-size: 16px;
+            color: var(--text-color);
+            background-color: var(--bg-color);
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+        }}
+
+        .container {{
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }}
+
+        h1 {{ font-size: 32px; font-weight: 700; margin-bottom: 8px; color: var(--primary-color); }}
+        h2 {{ font-size: 24px; font-weight: 600; margin-top: 40px; border-bottom: 2px solid var(--primary-color); padding-bottom: 8px; }}
+        h3 {{ font-size: 20px; font-weight: 600; margin-top: 24px; }}
+
+        .header {{
+            text-align: center;
+            padding: 30px;
+            border-bottom: 3px solid var(--primary-color);
+            margin-bottom: 30px;
+        }}
+
+        .metadata {{ color: #666; font-size: 14px; margin-top: 8px; }}
+
+        .status-badge {{
+            display: inline-block;
+            padding: 16px 32px;
+            border-radius: 8px;
+            font-weight: 700;
+            font-size: 24px;
+            color: white;
+            background-color: {status_color};
+            margin: 20px 0;
+        }}
+
+        .scorecard {{
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin: 30px 0;
+        }}
+
+        .scorecard-item {{
+            text-align: center;
+            padding: 20px 30px;
+            border-radius: 8px;
+            background: #f8f9fa;
+            min-width: 120px;
+        }}
+
+        .scorecard-value {{
+            font-size: 48px;
+            font-weight: 700;
+        }}
+
+        .scorecard-label {{
+            font-size: 14px;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }}
+
+        .pass {{ color: var(--pass-color); }}
+        .warn {{ color: var(--warn-color); }}
+        .fail {{ color: var(--fail-color); }}
+
+        .section {{
+            margin-bottom: 40px;
+            page-break-inside: avoid;
+        }}
+
+        .findings-box {{
+            background: #f8f9fa;
+            padding: 24px;
+            border-radius: 8px;
+            border-left: 4px solid var(--primary-color);
+            margin: 20px 0;
+        }}
+
+        .finding-item {{
+            margin: 12px 0;
+            padding: 8px 0;
+            border-bottom: 1px solid #e2e8f0;
+        }}
+
+        .finding-item:last-child {{
+            border-bottom: none;
+        }}
+
+        .figure-grid {{
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+            margin: 20px 0;
+        }}
+
+        .figure-container {{
+            background: #f8f9fa;
+            padding: 16px;
+            border-radius: 8px;
+            text-align: center;
+        }}
+
+        .figure-title {{
+            font-weight: 600;
+            font-size: 14px;
+            margin-bottom: 8px;
+            color: var(--primary-color);
+        }}
+
+        .chart-placeholder {{
+            background: #f0f0f0;
+            padding: 60px 20px;
+            text-align: center;
+            border-radius: 8px;
+            color: #666;
+        }}
+
+        .governance-block {{
+            background: #f7fafc;
+            border: 2px solid var(--primary-color);
+            padding: 24px;
+            border-radius: 8px;
+            margin-top: 40px;
+        }}
+
+        .signature-line {{
+            border-bottom: 1px solid #333;
+            width: 200px;
+            display: inline-block;
+            margin-top: 30px;
+        }}
+
+        .footer {{
+            margin-top: 40px;
+            padding: 20px;
+            text-align: center;
+            font-size: 14px;
+            color: #666;
+            border-top: 1px solid #e2e8f0;
+        }}
+
+        .disclaimer {{
+            font-size: 14px;
+            color: #666;
+            font-style: italic;
+            background: #fffdf0;
+            padding: 16px;
+            border-radius: 6px;
+            margin-top: 20px;
+        }}
+
+        @media print {{
+            body {{ background: white; }}
+            .container {{ max-width: 100%; }}
+            .figure-grid {{ page-break-inside: avoid; }}
+            .section {{ page-break-inside: avoid; }}
+        }}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>Model Fairness Assessment</h1>
+            <p style="font-size: 20px; color: #666;">Governance Committee Report</p>
+            <p class="metadata">
+                <strong>{results.config.model_name}</strong> v{results.config.model_version}<br>
+                {results.config.report_date or date.today().isoformat()}
+            </p>
+        </header>
+
+        <!-- Advisory Banner -->
+        <div style="background: #fff3cd; border: 2px solid #ffc107; padding: 16px; border-radius: 8px; margin-bottom: 30px; text-align: center;">
+            <strong style="font-size: 18px; color: #856404;">⚠️ ADVISORY ASSESSMENT</strong>
+            <p style="margin: 8px 0 0 0; color: #856404;">
+                This is an advisory assessment based on statistical analysis of the test dataset.<br>
+                Final deployment decisions rest with the governance committee.
+            </p>
+        </div>
+
+        <!-- Page 1: Executive Summary -->
+        <section class="section">
+            <h2>Executive Summary</h2>
+
+            <div style="text-align: center;">
+                <div class="status-badge">{status_text.get(status, status)}</div>
+                <p style="font-size: 18px; margin-top: 16px; font-weight: 600;">
+                    {_get_detection_summary(n_errors, n_warnings)}
+                </p>
+            </div>
+
+            <div class="scorecard">
+                <div class="scorecard-item">
+                    <div class="scorecard-value pass">{n_pass}</div>
+                    <div class="scorecard-label">Within Threshold</div>
+                </div>
+                <div class="scorecard-item">
+                    <div class="scorecard-value warn">{n_warnings}</div>
+                    <div class="scorecard-label">Near Threshold</div>
+                </div>
+                <div class="scorecard-item">
+                    <div class="scorecard-value fail">{n_errors}</div>
+                    <div class="scorecard-label">Exceeded Threshold</div>
+                </div>
+            </div>
+
+            <div class="findings-box">
+                <h3 style="margin-top: 0;">Key Findings</h3>
+                {plain_findings}
+            </div>
+
+            <p class="disclaimer">
+                This assessment provides advisory guidance based on the CHAI RAIC framework.
+                Final deployment decisions rest with the governance committee and clinical stakeholders.
+            </p>
+        </section>
+
+        <!-- Page 2: Overall Performance -->
+        <section class="section">
+            <h2>Overall Model Performance</h2>
+            <p>Four key metrics evaluating model discrimination and calibration:</p>
+            {overall_figures_html}
+        </section>
+
+        <!-- Pages 3-4: Subgroup Performance -->
+        <section class="section">
+            <h2>Subgroup Performance</h2>
+            <p>Performance comparison across demographic groups defined by the data scientist:</p>
+            {subgroup_figures_html}
+        </section>
+
+        <!-- Page 5: Governance Decision -->
+        <section class="section governance-block">
+            <h2>Governance Decision</h2>
+
+            <p><strong>Model:</strong> {results.config.model_name} v{results.config.model_version}</p>
+            <p><strong>Intended Use:</strong> {results.config.intended_use or "Not specified"}</p>
+            <p><strong>Intended Population:</strong> {results.config.intended_population or "Not specified"}</p>
+
+            <h3>Decision</h3>
+            <p>
+                &#9744; APPROVE for deployment<br>
+                &#9744; APPROVE with conditions<br>
+                &#9744; DEFER pending additional review<br>
+                &#9744; DO NOT APPROVE
+            </p>
+
+            <h3>Comments</h3>
+            <div style="border: 1px solid #ccc; min-height: 60px; padding: 8px; background: white; margin-bottom: 20px;"></div>
+
+            <h3>Signatures</h3>
+            <p>
+                <span class="signature-line"></span><br>
+                <small>Governance Committee Chair</small>
+            </p>
+            <p>
+                <span class="signature-line"></span><br>
+                <small>Date</small>
+            </p>
+        </section>
+
+        <footer class="footer">
+            <p>{GOVERNANCE_DISCLAIMER_FULL}</p>
+            <p>Generated by FairCareAI on {date.today().isoformat()}</p>
+        </footer>
+    </div>
+</body>
+</html>"""
+
+    return html
+
+
+def _render_governance_overall_figures(results: "AuditResults") -> str:
+    """Render the 4 overall performance figures for governance report."""
+    from faircareai.visualization.governance_dashboard import (
+        create_governance_overall_figures,
+    )
+
+    try:
+        figures = create_governance_overall_figures(results)
+
+        html_parts = ['<div class="figure-grid">']
+        for title, fig in figures.items():
+            if fig is not None:
+                fig_html = fig.to_html(full_html=False, include_plotlyjs=False)
+                html_parts.append(f"""
+                <div class="figure-container">
+                    <div class="figure-title">{title}</div>
+                    {fig_html}
+                </div>
+                """)
+        html_parts.append("</div>")
+        return "".join(html_parts)
+    except Exception as e:
+        return f'<p class="chart-placeholder">Overall figures could not be generated: {e}</p>'
+
+
+def _render_governance_subgroup_figures(results: "AuditResults") -> str:
+    """Render the subgroup performance figures for governance report."""
+    from faircareai.visualization.governance_dashboard import (
+        create_governance_subgroup_figures,
+    )
+
+    try:
+        # Get figures for each sensitive attribute
+        all_figures = create_governance_subgroup_figures(results)
+
+        html_parts = []
+        for attr_name, figures in all_figures.items():
+            html_parts.append(f"<h3>{attr_name.replace('_', ' ').title()}</h3>")
+            html_parts.append('<div class="figure-grid">')
+            for title, fig in figures.items():
+                if fig is not None:
+                    fig_html = fig.to_html(full_html=False, include_plotlyjs=False)
+                    html_parts.append(f"""
+                    <div class="figure-container">
+                        <div class="figure-title">{title}</div>
+                        {fig_html}
+                    </div>
+                    """)
+            html_parts.append("</div>")
+
+        return (
+            "".join(html_parts)
+            if html_parts
+            else '<p class="chart-placeholder">No subgroup figures available.</p>'
+        )
+    except Exception as e:
+        return f'<p class="chart-placeholder">Subgroup figures could not be generated: {e}</p>'
+
+
+def _generate_plain_language_findings(results: "AuditResults") -> str:
+    """Generate plain language findings for governance report."""
+    perf = results.overall_performance
+    disc = perf.get("discrimination", {})
+    cal = perf.get("calibration", {})
+    gov = results.governance_recommendation
+
+    findings = []
+
+    # Model discrimination
+    auroc = disc.get("auroc", 0)
+    if auroc >= 0.8:
+        findings.append(
+            "The model demonstrates <strong>strong</strong> ability to distinguish between outcomes."
+        )
+    elif auroc >= 0.7:
+        findings.append(
+            "The model demonstrates <strong>acceptable</strong> ability to distinguish between outcomes."
+        )
+    else:
+        findings.append(
+            "The model's ability to distinguish between outcomes <strong>requires review</strong>."
+        )
+
+    # Calibration
+    brier = cal.get("brier_score", 1)
+    slope = cal.get("calibration_slope", 0)
+    if brier < 0.15 and 0.8 <= slope <= 1.2:
+        findings.append(
+            "Model predictions are <strong>well-calibrated</strong> with actual outcomes."
+        )
+    elif brier < 0.25:
+        findings.append("Model calibration is <strong>acceptable</strong> but could be improved.")
+    else:
+        findings.append("Model calibration <strong>requires attention</strong>.")
+
+    # Fairness - use detection language, not recommendation language
+    n_errors = gov.get("n_errors", 0)
+    n_warnings = gov.get("n_warnings", 0)
+    if n_errors == 0 and n_warnings == 0:
+        findings.append("No fairness disparities detected across demographic groups.")
+    elif n_errors == 0:
+        findings.append(
+            f"<strong>{n_warnings} fairness metric(s)</strong> detected near threshold."
+        )
+    else:
+        findings.append(
+            f"<strong>{n_errors} fairness metric(s)</strong> detected exceeding threshold."
+        )
+
+    # Cohort size
+    n_total = results.descriptive_stats.get("cohort_overview", {}).get("n_total", 0)
+    if n_total >= 1000:
+        findings.append(f"Analysis based on adequate sample size (N = {n_total:,}).")
+    elif n_total >= 100:
+        findings.append(
+            f"Sample size (N = {n_total:,}) is limited; results should be interpreted with caution."
+        )
+    else:
+        findings.append(
+            f"<strong>Warning:</strong> Small sample size (N = {n_total:,}) limits reliability of results."
+        )
+
+    html = ""
+    for finding in findings:
+        html += f'<div class="finding-item">{finding}</div>'
+
+    return html
+
+
+def _get_detection_summary(n_errors: int, n_warnings: int) -> str:
+    """Generate detection language summary for governance report.
+
+    Uses "X metrics exceeded threshold" language instead of pass/fail.
+
+    Args:
+        n_errors: Number of metrics that exceeded threshold.
+        n_warnings: Number of metrics near threshold.
+
+    Returns:
+        Plain language detection summary.
+    """
+    if n_errors == 0 and n_warnings == 0:
+        return "No fairness issues detected"
+    elif n_errors == 0:
+        return f"{n_warnings} metric(s) near threshold"
+    elif n_warnings == 0:
+        return f"{n_errors} metric(s) exceeded threshold"
+    else:
+        return f"{n_errors} metric(s) exceeded threshold, {n_warnings} near threshold"
+
+
+def _get_governance_print_css() -> str:
+    """Get CSS for governance PDF output (3-5 pages)."""
+    return """
+    @page {
+        size: letter;
+        margin: 0.75in;
+
+        @top-right {
+            content: "Governance Report";
+            font-size: 9pt;
+            color: #666;
+        }
+
+        @bottom-center {
+            content: counter(page) " of " counter(pages);
+            font-size: 9pt;
+            color: #666;
+        }
+    }
+
+    @page :first {
+        @top-right { content: none; }
+    }
+
+    body {
+        font-size: 11pt;
+    }
+
+    h1 { font-size: 24pt; }
+    h2 { font-size: 18pt; page-break-after: avoid; }
+    h3 { font-size: 14pt; }
+
+    .section {
+        page-break-inside: avoid;
+    }
+
+    .figure-grid {
+        page-break-inside: avoid;
+    }
+
+    .governance-block {
+        page-break-before: always;
+    }
+    """

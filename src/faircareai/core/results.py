@@ -13,10 +13,13 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+import numpy as np
 import polars as pl
 
 if TYPE_CHECKING:
     import plotly.graph_objects as go
+
+    from faircareai.reports.generator import AuditSummary
 
 from faircareai.core.config import FairnessConfig, MetricDisplayConfig, OutputPersona
 from faircareai.core.logging import get_logger
@@ -84,7 +87,7 @@ class AuditResults:
         gov = self.governance_recommendation
 
         # Format metrics safely - handles None and numeric values
-        def fmt(val, fmt_str=".3f"):
+        def fmt(val: Any, fmt_str: str = ".3f") -> str:
             if val is None:
                 return "N/A"
             try:
@@ -93,7 +96,7 @@ class AuditResults:
                 return "N/A"
 
         # Safe percentage formatting - handles 0.0 correctly (0.0 is falsy but valid)
-        def fmt_pct(val):
+        def fmt_pct(val: Any) -> str:
             if val is None:
                 return "N/A"
             return f"{val * 100:.1f}"
@@ -184,7 +187,7 @@ class AuditResults:
 
     # === Visualization Methods ===
 
-    def plot_discrimination(self):
+    def plot_discrimination(self) -> "go.Figure":
         """Plot ROC and Precision-Recall curves (TRIPOD+AI 2.1).
 
         Returns:
@@ -194,7 +197,7 @@ class AuditResults:
 
         return plot_discrimination_curves(self)
 
-    def plot_overall_calibration(self):
+    def plot_overall_calibration(self) -> "go.Figure":
         """Plot calibration curve for overall model (TRIPOD+AI 2.2).
 
         Returns:
@@ -220,7 +223,7 @@ class AuditResults:
         thresh = selected_threshold or self.overall_performance.get("primary_threshold", 0.5)
         return plot_threshold_analysis(self, selected_threshold=thresh)
 
-    def plot_decision_curve(self):
+    def plot_decision_curve(self) -> "go.Figure":
         """Plot Decision Curve Analysis for clinical utility (TRIPOD+AI 2.5).
 
         Returns:
@@ -241,18 +244,25 @@ class AuditResults:
         """
         from faircareai.visualization.plots import create_calibration_plot
 
-        if by:
-            # Stratified calibration
-            return create_calibration_plot(
-                self._audit.df if self._audit else None,
-                self._audit.y_prob_col if self._audit else "y_prob",
-                self._audit.y_true_col if self._audit else "y_true",
-                by,
-            )
-        else:
+        if by is None:
             return self.plot_overall_calibration()
 
-    def plot_fairness_dashboard(self):
+        if self._audit is None:
+            raise ValueError("Stratified calibration requires AuditResults._audit to be set.")
+
+        df = self._audit.df
+        y_true = np.asarray(df[self._audit.y_true_col].to_numpy())
+        y_prob = np.asarray(df[self._audit.y_prob_col].to_numpy())
+        group_labels = np.asarray(df[by].to_numpy())
+
+        return create_calibration_plot(
+            y_true=y_true,
+            y_prob=y_prob,
+            group_labels=group_labels,
+            title=f"Calibration by {by}",
+        )
+
+    def plot_fairness_dashboard(self) -> "go.Figure":
         """Plot comprehensive fairness dashboard.
 
         Returns:
@@ -279,7 +289,7 @@ class AuditResults:
 
         return plot_subgroup_comparison(self, metric=metric)
 
-    def plot_executive_summary(self):
+    def plot_executive_summary(self) -> "go.Figure":
         """Plot executive summary for governance committee.
 
         Single-page visual with:
@@ -297,7 +307,7 @@ class AuditResults:
 
         return create_executive_summary(self)
 
-    def plot_go_nogo_scorecard(self):
+    def plot_go_nogo_scorecard(self) -> "go.Figure":
         """Plot scorecard for governance presentation.
 
         Returns:
@@ -522,7 +532,7 @@ class AuditResults:
 
         return path
 
-    def _to_audit_summary(self):
+    def _to_audit_summary(self) -> "AuditSummary":
         """Convert to legacy AuditSummary for report generator compatibility."""
         from faircareai.reports.generator import AuditSummary
 
@@ -600,7 +610,7 @@ def _normalize_persona(persona: OutputPersona | str) -> OutputPersona:
     raise TypeError(f"persona must be OutputPersona or str, got {type(persona)}")
 
 
-def _make_json_serializable(obj):
+def _make_json_serializable(obj: Any) -> Any:
     """Convert objects to JSON-serializable format."""
     if isinstance(obj, dict):
         return {k: _make_json_serializable(v) for k, v in obj.items()}

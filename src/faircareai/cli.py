@@ -195,7 +195,7 @@ def audit(
         if suggestions:
             console.print(f"  Found {len(suggestions)} suggested attributes")
             # Auto-accept first 3 suggestions for CLI
-            indices = list(range(1, min(4, len(suggestions) + 1)))
+            indices: list[int | str] = list(range(1, min(4, len(suggestions) + 1)))
             audit_obj.accept_suggested_attributes(indices)
             console.print(f"  Accepted: {[s['suggested_name'] for s in suggestions[:3]]}")
         else:

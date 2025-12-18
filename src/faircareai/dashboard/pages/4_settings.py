@@ -17,7 +17,7 @@ from faircareai.dashboard.components.audience_toggle import (
 from faircareai.visualization.themes import GOVERNANCE_DISCLAIMER_SHORT
 
 
-def render_settings_page():
+def render_settings_page() -> None:
     """Render the settings page."""
     render_skip_link()
 
@@ -240,7 +240,7 @@ def render_settings_page():
     ### Key Features
     - WCAG 2.1 AA compliant interface
     - Dual-audience design (Data Scientists + Governance Committees)
-    - NYT-style data visualization
+    - Publication-ready data visualization
     - Comprehensive fairness metrics
     - Governance sign-off workflow
 

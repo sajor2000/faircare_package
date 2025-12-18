@@ -9,6 +9,7 @@ context, organizational values, and governance frameworks.
 """
 
 from dataclasses import dataclass, field
+from decimal import Decimal
 from pathlib import Path
 from typing import Any
 
@@ -315,8 +316,19 @@ class FairCareAudit:
             )
 
         # 4. Validate predictions are probabilities [0, 1]
-        pred_min = float(self.df[self.pred_col].min() or 0)
-        pred_max = float(self.df[self.pred_col].max() or 1)
+        pred_min_value = self.df[self.pred_col].min()
+        pred_max_value = self.df[self.pred_col].max()
+
+        if not isinstance(pred_min_value, (int, float, Decimal)) or not isinstance(
+            pred_max_value, (int, float, Decimal)
+        ):
+            raise DataValidationError(
+                f"Prediction column '{self.pred_col}' must contain numeric probability values.",
+                column=self.pred_col,
+            )
+
+        pred_min = float(pred_min_value)
+        pred_max = float(pred_max_value)
         if pred_min < 0 or pred_max > 1:
             raise DataValidationError(
                 f"Predictions must be probabilities in [0, 1], "
@@ -910,11 +922,33 @@ class FairCareAudit:
         total_checks = len(results.subgroup_performance) * n_checks_per_attr
         n_pass = max(0, total_checks - len(warnings) - len(errors))
 
+        # Determine status based on error/warning counts
+        if len(errors) > 0:
+            status = "REVIEW"
+            advisory = "Issues detected that may warrant review before deployment."
+        elif len(warnings) > 0:
+            status = "CONDITIONAL"
+            advisory = "Some metrics near threshold — consider documented mitigation."
+        else:
+            status = "READY"
+            advisory = "No significant issues detected at current thresholds."
+
+        # CHAI governance disclaimer
+        disclaimer = (
+            "This is CHAI-grounded guidance. Final deployment decisions "
+            "rest with clinical stakeholders and governance committees."
+        )
+
         return {
             "methodology": (
                 "Metrics computed per Van Calster et al. (2025) methodology. "
                 "Interpretation rests with your organization's governance process."
             ),
+            # Status fields for CLI and governance display
+            "status": status,
+            "advisory": advisory,
+            "disclaimer": disclaimer,
+            # Threshold counts
             "outside_threshold_count": len(errors),
             "near_threshold_count": len(warnings),
             "within_threshold_count": n_pass,

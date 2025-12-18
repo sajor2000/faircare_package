@@ -390,7 +390,7 @@ def compute_classification_at_threshold(
     # Number Needed to Evaluate (NNE)
     nne = 1 / ppv if ppv > 0 else float("inf")
 
-    result = {
+    result: dict[str, Any] = {
         "threshold": threshold,
         "sensitivity": float(sensitivity),
         "specificity": float(specificity),

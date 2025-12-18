@@ -1,8 +1,10 @@
 """
 FairCareAI Altair Static Visualization Components
 
-Static charts for PDF/PPTX export with NYT/D3 aesthetic.
+Static charts for PDF/PPTX export with publication-ready aesthetic.
 """
+
+from typing import Any, cast
 
 import altair as alt
 import polars as pl
@@ -11,19 +13,19 @@ from .themes import GHOSTING_CONFIG, SEMANTIC_COLORS, TYPOGRAPHY, GhostingConfig
 
 
 def register_altair_theme() -> None:
-    """Register FairCareAI JAMA-style theme with Altair.
+    """Register FairCareAI publication-ready theme with Altair.
 
-    JAMA Scientific Publication Standards:
+    Scientific Publication Standards:
     - Large, clear axis labels (22pt titles, 18pt ticks)
     - Readable legend text (18pt)
     - Prominent titles (36pt)
     """
 
-    def theme():
+    def theme() -> dict[str, Any]:
         return {
             "config": {
                 "background": SEMANTIC_COLORS["background"],
-                # Title configuration - JAMA style large, clear
+                # Title configuration - large, clear
                 "title": {
                     "font": TYPOGRAPHY["heading_font"],
                     "fontSize": TYPOGRAPHY["headline_size"],
@@ -79,7 +81,7 @@ def create_forest_plot_static(
     title: str | None = None,
     enable_ghosting: bool = True,
     ghosting_config: GhostingConfig | None = None,
-) -> alt.LayerChart:
+) -> alt.Chart:
     """Create static forest plot for PDF/PPTX export."""
     ghost_cfg = ghosting_config or GHOSTING_CONFIG
 
@@ -105,7 +107,9 @@ def create_forest_plot_static(
         )
     )
 
-    return points.properties(title=title, width=500, height=max(200, len(pdf) * 40))
+    return cast(
+        alt.Chart, points.properties(title=title, width=500, height=max(200, len(pdf) * 40))
+    )
 
 
 def create_icon_array(

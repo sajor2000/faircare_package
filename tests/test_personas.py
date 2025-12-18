@@ -910,7 +910,6 @@ class TestPersonaTerminologyMetricLabels:
     def test_all_recommended_metrics_have_terminology(self) -> None:
         """Test that all RECOMMENDED metrics have persona terminology."""
         from faircareai.core.config import PERSONA_TERMINOLOGY, get_label
-        from faircareai.core.constants import VANCALSTER_ALL_RECOMMENDED
 
         # Key RECOMMENDED metrics that should have terminology
         key_metrics = ["auroc", "calibration", "net_benefit", "risk_distribution"]

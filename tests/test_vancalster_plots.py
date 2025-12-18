@@ -12,9 +12,9 @@ Tests cover:
 """
 
 import numpy as np
-import pytest
 from plotly.graph_objects import Figure
 
+from faircareai.visualization.themes import FAIRCAREAI_BRAND
 from faircareai.visualization.vancalster_plots import (
     _add_source_annotation,
     _generate_auroc_forest_alt_text,
@@ -27,7 +27,6 @@ from faircareai.visualization.vancalster_plots import (
     create_risk_distribution_plot,
     create_vancalster_dashboard,
 )
-from faircareai.visualization.themes import FAIRCAREAI_BRAND
 
 
 class TestGenerateAurocForestAltText:

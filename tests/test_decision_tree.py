@@ -9,8 +9,6 @@ Tests cover:
 - Decision tree text formatting
 """
 
-import pytest
-
 from faircareai.core.config import FairnessMetric, UseCaseType
 from faircareai.fairness.decision_tree import (
     DECISION_TREE,

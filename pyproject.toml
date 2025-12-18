@@ -162,20 +162,6 @@ module = [
 ]
 ignore_missing_imports = true
 
-# Relax type checking for dashboard/UI code (Streamlit apps have many Any types)
-[[tool.mypy.overrides]]
-module = [
-    "faircareai.dashboard.*",
-    "faircareai.visualization.*",
-    "faircareai.reports.*",
-    "faircareai.core.results",  # Results class has complex Any types from dynamic data
-    "faircareai.core.audit",    # Audit class has complex dynamic data handling
-    "faircareai.cli",
-    "faircareai.metrics.*",     # Metrics have complex numpy array types
-    "faircareai.data.*",        # Data generation utilities
-]
-ignore_errors = true  # Fully ignore type errors in UI/dynamic modules
-
 # ==============================================================================
 # Ruff Configuration
 # ==============================================================================

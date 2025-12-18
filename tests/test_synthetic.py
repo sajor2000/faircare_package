@@ -9,9 +9,7 @@ Tests cover:
 - Summary statistics
 """
 
-import numpy as np
 import polars as pl
-import pytest
 
 from faircareai.data.synthetic import generate_icu_mortality_data, get_data_summary
 

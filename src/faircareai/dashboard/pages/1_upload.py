@@ -5,6 +5,8 @@ Handles data upload with validation and preview.
 WCAG 2.1 AA compliant with clear error messaging.
 """
 
+from decimal import Decimal
+
 import polars as pl
 import streamlit as st
 
@@ -52,9 +54,21 @@ def validate_dataframe(df: pl.DataFrame) -> tuple[bool, list[str]]:
 
     # Validate y_prob is in [0, 1]
     if "y_prob" in df.columns:
-        min_prob = df["y_prob"].min()
-        max_prob = df["y_prob"].max()
-        if min_prob < 0 or max_prob > 1:
+        min_prob_value = df["y_prob"].min()
+        max_prob_value = df["y_prob"].max()
+
+        min_prob = (
+            float(min_prob_value) if isinstance(min_prob_value, (int, float, Decimal)) else None
+        )
+        max_prob = (
+            float(max_prob_value) if isinstance(max_prob_value, (int, float, Decimal)) else None
+        )
+
+        if min_prob is None or max_prob is None:
+            errors.append(
+                "Column `y_prob` must be numeric and contain at least one non-null value."
+            )
+        elif min_prob < 0 or max_prob > 1:
             errors.append(
                 f"Column `y_prob` must be in range [0, 1]. Found range: [{min_prob:.4f}, {max_prob:.4f}]"
             )
@@ -96,7 +110,7 @@ def detect_demographic_columns(df: pl.DataFrame) -> list[dict]:
             sample_values = col_data.unique().to_list()[:5]
         elif "int" in dtype.lower() or "float" in dtype.lower():
             col_type = "numeric"
-            sample_values = [f"min: {col_data.min()}", f"max: {col_data.max()}"]
+            sample_values = [f"min: {str(col_data.min())}", f"max: {str(col_data.max())}"]
         else:
             col_type = "text"
             sample_values = col_data.head(3).to_list()
@@ -132,7 +146,7 @@ def detect_demographic_columns(df: pl.DataFrame) -> list[dict]:
     return columns
 
 
-def render_upload_page():
+def render_upload_page() -> None:
     """Render the data upload page."""
     render_skip_link()
 

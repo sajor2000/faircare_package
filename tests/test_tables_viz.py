@@ -215,7 +215,6 @@ class TestCreateExecutiveScorecardImportError:
 
     def test_import_error_message(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Test that meaningful import error is raised without great-tables."""
-        import sys
 
         # Skip if great_tables is actually installed (we can't easily test this)
         try:

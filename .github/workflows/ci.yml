@@ -116,3 +116,74 @@ jobs:
         with:
           name: dist
           path: dist/
+
+  smoke-wheel:
+    name: Smoke Install (wheel) (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    needs: build
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: "latest"
+
+      - name: Set up Python
+        run: uv python install 3.12
+
+      - name: Smoke test installed wheel
+        shell: bash
+        run: |
+          set -euxo pipefail
+          WHEEL="$(ls dist/*.whl | head -n 1)"
+          uv run --no-project --with "$WHEEL" python - <<'PY'
+          from __future__ import annotations
+
+          import tempfile
+          from pathlib import Path
+
+          import numpy as np
+          import polars as pl
+
+          from faircareai.core.audit import FairCareAudit
+          from faircareai.core.config import FairnessConfig, FairnessMetric, UseCaseType
+
+          n = 200
+          rng = np.random.default_rng(0)
+          df = pl.DataFrame(
+              {
+                  "y_prob": rng.random(n),
+                  "y_true": rng.binomial(1, 0.3, n),
+                  "race": rng.choice(["White", "Black", "Asian", "Hispanic"], n),
+              }
+          )
+
+          config = FairnessConfig(
+              model_name="CI Smoke Test",
+              primary_fairness_metric=FairnessMetric.EQUALIZED_ODDS,
+              fairness_justification="CI smoke test",
+              use_case_type=UseCaseType.INTERVENTION_TRIGGER,
+          )
+          audit = FairCareAudit(
+              data=df,
+              pred_col="y_prob",
+              target_col="y_true",
+              config=config,
+              threshold=0.5,
+          )
+          audit.add_sensitive_attribute(name="race", column="race", reference="White")
+          results = audit.run(bootstrap_ci=False)
+
+          out_path = Path(tempfile.gettempdir()) / "faircareai_ci_smoke_report.html"
+          results.to_html(out_path)
+          assert out_path.exists(), f"Expected report at {out_path}"
+          PY

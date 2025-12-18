@@ -5,10 +5,12 @@ Provides technical and plain-language explanations for all metrics.
 Supports Data Scientist and Governance Committee personas.
 """
 
+from typing import Any
+
 import streamlit as st
 
 # Comprehensive metric glossary with dual-audience explanations
-METRIC_GLOSSARY = {
+METRIC_GLOSSARY: dict[str, dict[str, Any]] = {
     # Performance Metrics
     "auroc": {
         "name": "AUROC",
@@ -310,7 +312,7 @@ METRIC_GLOSSARY = {
 def get_metric_explanation(
     metric: str,
     audience: str = "governance",
-) -> dict:
+) -> dict[str, Any]:
     """Get metric explanation appropriate for audience.
 
     Args:
@@ -320,9 +322,8 @@ def get_metric_explanation(
     Returns:
         Dictionary with explanation appropriate for audience.
     """
-    metric_info = METRIC_GLOSSARY.get(metric.lower(), {})
-
-    if not metric_info:
+    metric_info = METRIC_GLOSSARY.get(metric.lower())
+    if metric_info is None:
         return {
             "name": metric,
             "explanation": f"Information for {metric} not available.",

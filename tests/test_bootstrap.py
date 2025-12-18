@@ -142,7 +142,7 @@ class TestBootstrapConfusionMetrics:
         y_true, y_prob = binary_data
         results = bootstrap_confusion_metrics(y_true, y_prob, threshold=0.5, n_bootstrap=50)
         lengths = [len(results[k]) for k in results]
-        assert all(l == lengths[0] for l in lengths)
+        assert all(length == lengths[0] for length in lengths)
 
     def test_values_in_range(self, binary_data: tuple[np.ndarray, np.ndarray]) -> None:
         """Test that metric values are in [0, 1]."""

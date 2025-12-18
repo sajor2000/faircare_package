@@ -6,6 +6,7 @@ Designed for clinical stakeholders and governance committees.
 """
 
 from datetime import datetime
+from typing import Any
 
 import polars as pl
 import streamlit as st
@@ -25,7 +26,7 @@ from faircareai.visualization.themes import (
 )
 
 
-def render_governance_summary(result) -> None:
+def render_governance_summary(result: Any) -> None:
     """Render governance summary section."""
     render_semantic_heading("Results Summary", level=2, id="summary")
 
@@ -61,7 +62,7 @@ def render_governance_summary(result) -> None:
     )
 
 
-def render_key_findings(result) -> None:
+def render_key_findings(result: Any) -> None:
     """Render key findings section."""
     render_semantic_heading("Computed Metrics", level=2, id="findings")
 
@@ -135,7 +136,7 @@ def render_key_findings(result) -> None:
         )
 
 
-def render_metrics_table(result, audience: str) -> None:
+def render_metrics_table(result: Any, audience: str) -> None:
     """Render metrics table section."""
     render_semantic_heading("Detailed Metrics", level=2, id="metrics")
 
@@ -216,7 +217,7 @@ def render_metrics_table(result, audience: str) -> None:
         )
 
 
-def render_sign_off_section(result) -> None:
+def render_sign_off_section(result: Any) -> None:
     """Render governance sign-off section."""
     render_semantic_heading("Governance Sign-Off", level=2, id="signoff")
 
@@ -323,7 +324,7 @@ def render_sign_off_section(result) -> None:
             st.error("Decision recorded: REJECTED")
 
 
-def render_export_section(result) -> None:
+def render_export_section(result: Any) -> None:
     """Render export options section."""
     render_semantic_heading("Export Report", level=2, id="export")
 
@@ -376,7 +377,7 @@ def render_export_section(result) -> None:
             )
 
 
-def render_governance_page():
+def render_governance_page() -> None:
     """Render the governance report page."""
     render_skip_link()
 

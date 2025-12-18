@@ -2,7 +2,7 @@
 FairCareAI Visualization Themes
 
 Colorblind-safe color palettes and theme configurations.
-Design System: NYT/D3 Editorial Aesthetic with "Ghosting" for uncertainty.
+Design System: Publication-ready editorial aesthetic with "Ghosting" for uncertainty.
 
 Methodology: Van Calster et al. (2025), CHAI RAIC Checkpoint 1.
 """
@@ -43,7 +43,7 @@ GOVERNANCE_DISCLAIMER_FULL = METHODOLOGY_STATEMENT
 
 # FairCareAI color palette for visualizations (maps to semantic colors)
 # All colors meet WCAG 2.1 AA contrast requirements (4.5:1 minimum)
-# Design: Pure white backgrounds for professional NYT D3-style aesthetic
+# Design: Pure white backgrounds for professional publication-ready aesthetic
 FAIRCAREAI_COLORS = {
     "primary": "#0072B2",
     "secondary": "#E69F00",
@@ -78,8 +78,8 @@ OKABE_ITO = {
     "black": "#000000",
 }
 
-# NYT Editorial + Notion-Inspired Color Extensions
-# Updated: Pure white backgrounds for professional D3-style aesthetic
+# Editorial + Notion-Inspired Color Extensions
+# Updated: Pure white backgrounds for professional aesthetic
 EDITORIAL_COLORS = {
     # Professional White Backgrounds
     "newsprint": "#FFFFFF",  # Pure white for plots (was #FAFAF8)
@@ -94,7 +94,7 @@ EDITORIAL_COLORS = {
     "safe_zone_border": "#A5D6A7",
     "reference_gray": "#787774",  # Notion reference gray
     "divider": "#E3E2E0",  # Notion divider
-    "highlight": "#FFF8E6",  # Warm NYT highlight yellow
+    "highlight": "#FFF8E6",  # Warm highlight yellow
 }
 
 # Semantic color assignments
@@ -136,7 +136,7 @@ GROUP_COLORS = [
 # =============================================================================
 # COLORSCALES - Centralized color gradients for charts
 # =============================================================================
-COLORSCALES = {
+COLORSCALES: dict[str, Any] = {
     # Blue (negative) → White (zero) → Red (positive) for disparity heatmaps
     "diverging_disparity": [
         [0.0, SEMANTIC_COLORS["primary"]],
@@ -201,36 +201,36 @@ SUBPLOT_SPACING = {
 }
 
 # Typography Configuration
-# JAMA Scientific Publication Style: Large, clear fonts for readability
+# Scientific Publication Style: Large, clear fonts for readability
 # Designed for healthcare dashboards, governance reports, and scientific presentations
-TYPOGRAPHY = {
+TYPOGRAPHY: dict[str, Any] = {
     # Font families with full fallback stacks
     "heading_font": "Merriweather, Georgia, serif",
     "data_font": "Inter, -apple-system, BlinkMacSystemFont, sans-serif",
     "mono_font": "JetBrains Mono, Menlo, Monaco, monospace",
-    # Heading hierarchy (h1-h6) - JAMA style large headers
-    "heading_size": 40,  # h1 - main chart title (JAMA: prominent)
+    # Heading hierarchy (h1-h6) - large headers for readability
+    "heading_size": 40,  # h1 - main chart title (prominent)
     "subheading_size": 32,  # h2 - section headers
     "h3_size": 28,  # h3 - subsections
     "h4_size": 24,  # h4
     "h5_size": 20,  # h5
     "h6_size": 18,  # h6
-    # Body and label sizes - JAMA style: clear and readable
+    # Body and label sizes - clear and readable
     "body_size": 18,  # body text
-    "label_size": 18,  # y-axis labels, tick labels (JAMA: 18pt minimum)
+    "label_size": 18,  # y-axis labels, tick labels (18pt minimum)
     "small_size": 16,  # small text (still readable)
     # Font weights
     "heading_weight": 700,
     "subheading_weight": 600,
     "label_weight": 500,
     "line_height": 1.5,
-    # Chart typography - JAMA SCIENTIFIC STANDARD (large, clear, readable)
+    # Chart typography - SCIENTIFIC STANDARD (large, clear, readable)
     "headline_size": 36,  # main chart title (prominent)
     "deck_size": 24,  # subtitle
     "annotation_size": 18,  # data labels on charts (must be readable)
     "source_size": 14,  # source attribution
     "callout_size": 18,  # callout annotations
-    # Axis typography - CRITICAL for scientific figures (JAMA style)
+    # Axis typography - CRITICAL for scientific figures
     "axis_title_size": 22,  # axis titles - LARGE (X-axis label, Y-axis label)
     "tick_size": 18,  # tick labels - LARGE (numbers on axes)
     "legend_size": 18,  # legend text - readable
@@ -489,7 +489,7 @@ def calculate_chart_height(n_items: int, chart_type: str = "default") -> int:
 
 
 def get_plotly_template(editorial_mode: bool = True) -> dict:
-    """Get Plotly template with NYT D3 editorial aesthetic.
+    """Get Plotly template with publication-ready editorial aesthetic.
 
     Professional white backgrounds with WCAG 2.1 AA compliant text contrast.
     Enhanced font sizes for improved readability.
@@ -512,7 +512,7 @@ def get_plotly_template(editorial_mode: bool = True) -> dict:
                 "y": 0.98,
                 "yanchor": "top",
             },
-            # Pure white backgrounds for professional NYT D3 style
+            # Pure white backgrounds for professional style
             "paper_bgcolor": "#FFFFFF",
             "plot_bgcolor": "#FFFFFF",
             "margin": {"l": 80, "r": 40, "t": 100, "b": 80},
@@ -586,7 +586,7 @@ def apply_faircareai_theme(fig: Any) -> Any:
     """Apply FairCareAI theme to a Plotly figure.
 
     Professional white backgrounds with WCAG 2.1 AA compliant contrast.
-    NYT D3 editorial aesthetic with enhanced readability.
+    Publication-ready editorial aesthetic with enhanced readability.
 
     Args:
         fig: Plotly Figure object.
@@ -634,14 +634,14 @@ def get_source_annotation(custom_note: str | None = None) -> str:
     return f"{base} | {custom_note}" if custom_note else base
 
 
-# Streamlit CSS with full NYT editorial styling
+# Streamlit CSS with full editorial styling
 # Updated: Pure white backgrounds for professional aesthetic with WCAG 2.1 AA compliance
 STREAMLIT_CSS = """
 <style>
     /* Import Google Fonts */
     @import url('https://fonts.googleapis.com/css2?family=Merriweather:wght@400;700;900&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 
-    /* Global App Styling - Pure white for professional NYT D3 look */
+    /* Global App Styling - Pure white for professional look */
     .stApp {
         background-color: #FFFFFF;
         font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
@@ -675,7 +675,7 @@ STREAMLIT_CSS = """
         color: #37352F;
     }
 
-    /* Metric Cards - NYT Style */
+    /* Metric Cards - Professional Style */
     [data-testid="stMetric"] {
         background: #FFFFFF;
         border: 1px solid #E3E2E0;
@@ -1084,7 +1084,7 @@ STREAMLIT_CSS = """
 
 
 def inject_streamlit_css() -> None:
-    """Inject NYT Editorial CSS into Streamlit."""
+    """Inject editorial CSS into Streamlit."""
     try:
         import streamlit as st
 
@@ -1094,7 +1094,7 @@ def inject_streamlit_css() -> None:
 
 
 def render_scorecard_html(pass_count: int, warn_count: int, flag_count: int) -> str:
-    """Render HTML scorecard with NYT styling.
+    """Render HTML scorecard with professional styling.
 
     Displays counts of metrics within, near, and outside configured thresholds.
     """

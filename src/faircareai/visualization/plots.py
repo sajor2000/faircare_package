@@ -1,7 +1,7 @@
 """
 FairCareAI Plotly Visualization Components
 
-Interactive charts with NYT/D3 editorial aesthetic and ghosting support.
+Interactive charts with publication-ready editorial aesthetic and ghosting support.
 Design Philosophy: Clean, direct-labeled charts that tell a story.
 
 WCAG 2.1 AA Compliance:
@@ -303,7 +303,12 @@ def generate_heatmap_alt_text(
     if len(df) == 0:
         return f"{title}. No disparity data available."
 
-    max_disparity = df["difference"].abs().max()
+    max_disparity_value = df["difference"].abs().max()
+    max_disparity = (
+        float(max_disparity_value)
+        if isinstance(max_disparity_value, (int, float, np.floating))
+        else 0.0
+    )
     n_significant = df.filter(pl.col("statistically_significant")).shape[0]
 
     alt_text = (
@@ -338,7 +343,7 @@ def create_forest_plot(
     source_note: str | None = None,
     include_optional: bool = True,
 ) -> go.Figure:
-    """Create NYT-style forest plot with CI whiskers and ghosting.
+    """Create publication-ready forest plot with CI whiskers and ghosting.
 
     Van Calster et al. (2025) Classification:
     - Default metrics (tpr, fpr, ppv) are OPTIONAL
@@ -895,7 +900,7 @@ def create_summary_scorecard(
     threshold: float,
     model_name: str = "Model",
 ) -> go.Figure:
-    """Create executive summary scorecard with NYT editorial styling."""
+    """Create executive summary scorecard with publication-ready editorial styling."""
     fig = go.Figure()
 
     # Create three indicator cards with better styling
@@ -1022,7 +1027,11 @@ def create_calibration_plot(
         )
     )
 
-    def compute_calibration(y_t, y_p, bins):
+    def compute_calibration(
+        y_t: np.ndarray,
+        y_p: np.ndarray,
+        bins: int,
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
         """Compute calibration bins."""
         bin_edges = np.linspace(0, 1, bins + 1)
 
@@ -1519,7 +1528,7 @@ def create_equity_dashboard(
         legend=LEGEND_POSITIONS["bottom_horizontal"],
     )
 
-    # Update polar subplot with JAMA-style font sizing
+    # Update polar subplot with publication-ready font sizing
     fig.update_polars(
         radialaxis=dict(
             range=[0, 1],
@@ -1786,10 +1795,10 @@ def create_fairness_radar(
                 visible=True,
                 range=[0, 1],
                 tickformat=".0%",
-                tickfont=dict(size=TYPOGRAPHY["tick_size"]),  # JAMA-style clear ticks
+                tickfont=dict(size=TYPOGRAPHY["tick_size"]),  # Clear ticks
             ),
             angularaxis=dict(
-                tickfont=dict(size=TYPOGRAPHY["tick_size"]),  # JAMA-style clear labels
+                tickfont=dict(size=TYPOGRAPHY["tick_size"]),  # Clear labels
             ),
         ),
         legend=LEGEND_POSITIONS["bottom_horizontal"],

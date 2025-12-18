@@ -16,15 +16,15 @@ from faircareai.dashboard.components.audience_toggle import (
     get_metric_display,
     render_audience_toggle,
 )
+from faircareai.dashboard.components.editorial_charts import (
+    add_editorial_annotations,
+    create_editorial_forest_plot,
+    generate_chart_headline,
+)
 from faircareai.dashboard.components.glossary import (
     METRIC_GLOSSARY,
     render_glossary_sidebar,
     render_glossary_tooltip,
-)
-from faircareai.dashboard.components.nyt_charts import (
-    add_nyt_annotations,
-    create_nyt_forest_plot,
-    generate_chart_headline,
 )
 
 __all__ = [
@@ -42,8 +42,8 @@ __all__ = [
     "METRIC_GLOSSARY",
     "render_glossary_tooltip",
     "render_glossary_sidebar",
-    # NYT charts
-    "create_nyt_forest_plot",
+    # Editorial charts
+    "create_editorial_forest_plot",
     "generate_chart_headline",
-    "add_nyt_annotations",
+    "add_editorial_annotations",
 ]

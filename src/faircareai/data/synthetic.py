@@ -110,7 +110,7 @@ def generate_icu_mortality_data(
     }
 
     # Generate demographics
-    data = {"patient_id": np.arange(1, n_samples + 1)}
+    data: dict[str, Any] = {"patient_id": np.arange(1, n_samples + 1)}
 
     for attr, config in demographics.items():
         values = list(config["values"])

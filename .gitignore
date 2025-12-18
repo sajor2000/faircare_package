@@ -119,7 +119,7 @@ Thumbs.db
 *.parquet
 *.csv
 !tests/fixtures/*.csv
-reports/
+/reports/
 output/
 
 # Sensitive data - HIPAA compliance

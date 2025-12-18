@@ -13,8 +13,6 @@ import logging
 import tempfile
 from pathlib import Path
 
-import pytest
-
 from faircareai.core.logging import (
     DEFAULT_FORMAT,
     LOGGER_NAME,

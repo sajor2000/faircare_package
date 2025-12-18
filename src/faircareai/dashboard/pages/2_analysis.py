@@ -5,6 +5,8 @@ Main analysis dashboard with dual-audience support.
 Displays performance metrics, fairness analysis, and visualizations.
 """
 
+from typing import Any
+
 import polars as pl
 import streamlit as st
 
@@ -32,20 +34,124 @@ from faircareai.visualization.themes import (
 
 
 @st.cache_data
-def run_audit(_df: pl.DataFrame, threshold: float, group_cols: list[str]):
+def run_audit(_df: pl.DataFrame, threshold: float, group_cols: list[str]) -> tuple[Any, Any]:
     """Run and cache audit results."""
-    from faircareai.core.audit import FairAudit
+    from datetime import date
 
-    audit = FairAudit(
-        _df,
-        threshold=threshold,
-        model_name="Uploaded Model",
+    from faircareai.core.audit import AuditResult
+    from faircareai.core.disparity import compute_disparities
+    from faircareai.core.metrics import compute_group_metrics
+
+    df = _df
+
+    if "y_pred" not in df.columns:
+        if "y_prob" not in df.columns:
+            raise ValueError("Missing required column: `y_pred` or `y_prob`")
+        df = df.with_columns((pl.col("y_prob") >= threshold).cast(pl.Int64).alias("y_pred"))
+
+    metrics: list[str] = ["tpr", "fpr", "ppv", "npv"]
+
+    metrics_frames: list[pl.DataFrame] = []
+    disparities_frames: list[pl.DataFrame] = []
+    warnings: list[str] = []
+
+    # Build a single overall row (independent of attribute)
+    overall_base = compute_group_metrics(
+        df,
+        group_col=group_cols[0],
+        y_true_col="y_true",
+        y_pred_col="y_pred",
+        metrics=metrics,
+    ).filter(pl.col("group") == "_overall")
+    overall_metrics = overall_base.with_columns(pl.lit("_overall").alias("attribute"))
+
+    for attr in group_cols:
+        group_metrics = compute_group_metrics(
+            df,
+            group_col=attr,
+            y_true_col="y_true",
+            y_pred_col="y_pred",
+            metrics=metrics,
+        )
+
+        # Collect sample size warnings (non-empty strings)
+        warning_rows = (
+            group_metrics.filter(pl.col("warning") != "")
+            .select(pl.col("warning"))
+            .to_series()
+            .to_list()
+        )
+        warnings.extend([w for w in warning_rows if isinstance(w, str) and w])
+
+        metrics_frames.append(
+            group_metrics.filter(pl.col("group") != "_overall").with_columns(
+                pl.lit(attr).alias("attribute")
+            )
+        )
+
+        for metric in metrics:
+            disparities = compute_disparities(group_metrics, metric=metric)
+            if len(disparities) == 0:
+                continue
+            disparities_frames.append(
+                disparities.with_columns(
+                    [
+                        pl.lit(attr).alias("attribute"),
+                        pl.col("status").str.to_uppercase(),
+                    ]
+                )
+            )
+
+    metrics_df = pl.concat([overall_metrics, *metrics_frames], how="vertical")
+    disparities_df = (
+        pl.concat(disparities_frames, how="vertical") if disparities_frames else pl.DataFrame()
     )
-    result = audit.run(group_cols=group_cols)
-    return result, audit
+
+    pass_count = (
+        len(disparities_df.filter(pl.col("status") == "PASS")) if len(disparities_df) else 0
+    )
+    warn_count = (
+        len(disparities_df.filter(pl.col("status") == "WARN")) if len(disparities_df) else 0
+    )
+    fail_count = (
+        len(disparities_df.filter(pl.col("status") == "FAIL")) if len(disparities_df) else 0
+    )
+
+    worst_disparity: tuple[str, str, float] | None = None
+    if len(disparities_df) > 0:
+        worst_row = (
+            disparities_df.with_columns(pl.col("difference").abs().alias("_abs_diff"))
+            .sort("_abs_diff", descending=True)
+            .head(1)
+            .to_dicts()
+        )
+        if worst_row:
+            row = worst_row[0]
+            worst_disparity = (
+                str(row.get("comparison_group", "")),
+                str(row.get("metric", "")),
+                float(row.get("difference", 0.0)),
+            )
+
+    result = AuditResult(
+        model_name="Uploaded Model",
+        audit_date=date.today().isoformat(),
+        n_samples=len(df),
+        threshold=threshold,
+        group_col=group_cols[0] if len(group_cols) == 1 else "multiple",
+        metrics_df=metrics_df,
+        disparities_df=disparities_df,
+        pass_count=pass_count,
+        warn_count=warn_count,
+        fail_count=fail_count,
+        worst_disparity=worst_disparity,
+        warnings=sorted(set(warnings)),
+    )
+
+    return result, None
 
 
-def render_executive_summary(result, audience: str) -> None:
+def render_executive_summary(result: Any, audience: str) -> None:
     """Render executive summary section."""
     render_semantic_heading("Results Summary", level=2, id="summary")
 
@@ -128,7 +234,7 @@ def render_executive_summary(result, audience: str) -> None:
             )
 
 
-def render_performance_section(result, df: pl.DataFrame, audience: str) -> None:
+def render_performance_section(result: Any, df: pl.DataFrame, audience: str) -> None:
     """Render overall performance section."""
     section_content = get_section_content("overall_performance", audience, {})
 
@@ -169,7 +275,9 @@ def render_performance_section(result, df: pl.DataFrame, audience: str) -> None:
                 st.caption("% of flags that are correct")
 
 
-def render_fairness_section(result, df: pl.DataFrame, group_cols: list[str], audience: str) -> None:
+def render_fairness_section(
+    result: Any, df: pl.DataFrame, group_cols: list[str], audience: str
+) -> None:
     """Render fairness analysis section."""
     section_content = get_section_content("fairness_summary", audience, {})
 
@@ -180,23 +288,25 @@ def render_fairness_section(result, df: pl.DataFrame, group_cols: list[str], aud
 
     # Metric selector
     if audience == "data_scientist":
-        metric_options = ["tpr", "fpr", "ppv", "npv"]
-        selected_metric = st.selectbox(
+        metric_options: list[str] = ["tpr", "fpr", "ppv", "npv"]
+        selected_metric_value = st.selectbox(
             "Select metric to analyze",
             options=metric_options,
             format_func=lambda x: x.upper(),
         )
+        selected_metric = selected_metric_value or "tpr"
     else:
-        metric_options = {
+        metric_labels: dict[str, str] = {
             "tpr": "Detection Rate (Sensitivity)",
             "fpr": "False Alarm Rate",
             "ppv": "Positive Flag Accuracy",
         }
-        selected_metric = st.selectbox(
+        selected_metric_value = st.selectbox(
             "What would you like to examine?",
-            options=list(metric_options.keys()),
-            format_func=lambda x: metric_options[x],
+            options=list(metric_labels.keys()),
+            format_func=lambda x: metric_labels[x],
         )
+        selected_metric = selected_metric_value or "tpr"
 
     # Show inline definition for governance
     if audience == "governance":
@@ -295,7 +405,7 @@ def render_fairness_section(result, df: pl.DataFrame, group_cols: list[str], aud
         st.markdown("---")
 
 
-def render_analysis_page():
+def render_analysis_page() -> None:
     """Render the main analysis page."""
     render_skip_link()
 

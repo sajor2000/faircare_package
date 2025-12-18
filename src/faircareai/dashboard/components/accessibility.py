@@ -317,11 +317,11 @@ def _generate_generic_alt(data: dict) -> str:
 
 
 def accessible_plotly_chart(
-    fig,
+    fig: Any,
     chart_id: str,
     alt_text: str,
     use_container_width: bool = True,
-    **kwargs,
+    **kwargs: Any,
 ) -> None:
     """Render Plotly chart with accessibility enhancements.
 
@@ -353,7 +353,7 @@ def accessible_plotly_chart(
 
 
 def create_data_table_summary(
-    df,
+    df: Any,
     table_id: str,
     caption: str,
     summary: str | None = None,
@@ -430,11 +430,11 @@ def create_aria_landmark(
 
 
 def make_figure_accessible(
-    fig,
+    fig: Any,
     chart_type: str,
     data_summary: dict[str, Any],
     key_findings: list[str] | None = None,
-):
+) -> Any:
     """Automatically add alt text and ARIA attributes to a Plotly figure.
 
     This is a convenience function that wraps generate_chart_alt_text and

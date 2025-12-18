@@ -74,7 +74,54 @@ jobs:
         run: uv pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ faircareai
 
       - name: Verify import
-        run: uv run python -c "import faircareai; print(f'Version: {faircareai.__version__ if hasattr(faircareai, \"__version__\") else \"unknown\"}')"
+        run: uv run python -c "import faircareai; print(getattr(faircareai, '__version__', 'unknown'))"
+
+      - name: Smoke test report generation
+        shell: bash
+        run: |
+          set -euxo pipefail
+          uv run python - <<'PY'
+          from __future__ import annotations
+
+          import tempfile
+          from pathlib import Path
+
+          import numpy as np
+          import polars as pl
+
+          from faircareai.core.audit import FairCareAudit
+          from faircareai.core.config import FairnessConfig, FairnessMetric, UseCaseType
+
+          n = 200
+          rng = np.random.default_rng(0)
+          df = pl.DataFrame(
+              {
+                  "y_prob": rng.random(n),
+                  "y_true": rng.binomial(1, 0.3, n),
+                  "race": rng.choice(["White", "Black", "Asian", "Hispanic"], n),
+              }
+          )
+
+          config = FairnessConfig(
+              model_name="Release Smoke Test",
+              primary_fairness_metric=FairnessMetric.EQUALIZED_ODDS,
+              fairness_justification="Release smoke test",
+              use_case_type=UseCaseType.INTERVENTION_TRIGGER,
+          )
+          audit = FairCareAudit(
+              data=df,
+              pred_col="y_prob",
+              target_col="y_true",
+              config=config,
+              threshold=0.5,
+          )
+          audit.add_sensitive_attribute(name="race", column="race", reference="White")
+          results = audit.run(bootstrap_ci=False)
+
+          out_path = Path(tempfile.gettempdir()) / "faircareai_release_smoke_report.html"
+          results.to_html(out_path)
+          assert out_path.exists(), f"Expected report at {out_path}"
+          PY
 
   publish-pypi:
     name: Publish to PyPI
