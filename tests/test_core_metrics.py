@@ -417,9 +417,7 @@ class TestComputeGroupMetrics:
 
     def test_custom_metrics(self, multi_group_df: pl.DataFrame) -> None:
         """Test custom metric selection."""
-        result = compute_group_metrics(
-            multi_group_df, "group", metrics=["tpr", "tnr", "accuracy"]
-        )
+        result = compute_group_metrics(multi_group_df, "group", metrics=["tpr", "tnr", "accuracy"])
         assert "tpr" in result.columns
         assert "tnr" in result.columns
         assert "accuracy" in result.columns
@@ -458,20 +456,12 @@ class TestComputeGroupMetrics:
 
     def test_custom_confidence(self, multi_group_df: pl.DataFrame) -> None:
         """Test with custom confidence level."""
-        result_95 = compute_group_metrics(
-            multi_group_df, "group", metrics=["tpr"], confidence=0.95
-        )
-        result_99 = compute_group_metrics(
-            multi_group_df, "group", metrics=["tpr"], confidence=0.99
-        )
+        result_95 = compute_group_metrics(multi_group_df, "group", metrics=["tpr"], confidence=0.95)
+        result_99 = compute_group_metrics(multi_group_df, "group", metrics=["tpr"], confidence=0.99)
 
         # 99% CI should be wider than 95% CI
-        ci_width_95 = (
-            result_95["tpr_ci_upper"][0] - result_95["tpr_ci_lower"][0]
-        )
-        ci_width_99 = (
-            result_99["tpr_ci_upper"][0] - result_99["tpr_ci_lower"][0]
-        )
+        ci_width_95 = result_95["tpr_ci_upper"][0] - result_95["tpr_ci_lower"][0]
+        ci_width_99 = result_99["tpr_ci_upper"][0] - result_99["tpr_ci_lower"][0]
         assert ci_width_99 > ci_width_95
 
     def test_small_group(self) -> None:

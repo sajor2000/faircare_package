@@ -37,9 +37,7 @@ class TestBootstrapMetric:
         y_prob = np.clip(y_prob, 0.01, 0.99)
         return y_true, y_prob
 
-    def test_returns_samples_and_failures(
-        self, sample_data: tuple[np.ndarray, np.ndarray]
-    ) -> None:
+    def test_returns_samples_and_failures(self, sample_data: tuple[np.ndarray, np.ndarray]) -> None:
         """Test that function returns samples list and failure count."""
         y_true, y_prob = sample_data
         samples, n_failed = bootstrap_metric(
@@ -53,9 +51,7 @@ class TestBootstrapMetric:
         """Test handling of empty arrays."""
         y_true = np.array([])
         y_prob = np.array([])
-        samples, n_failed = bootstrap_metric(
-            y_true, y_prob, lambda yt, yp: 0.0, n_bootstrap=10
-        )
+        samples, n_failed = bootstrap_metric(y_true, y_prob, lambda yt, yp: 0.0, n_bootstrap=10)
         assert samples == []
         assert n_failed == 0
 
@@ -69,9 +65,7 @@ class TestBootstrapMetric:
         # Should fail all due to single class
         assert n_failed == 50
 
-    def test_respects_min_classes(
-        self, sample_data: tuple[np.ndarray, np.ndarray]
-    ) -> None:
+    def test_respects_min_classes(self, sample_data: tuple[np.ndarray, np.ndarray]) -> None:
         """Test that min_classes parameter is respected."""
         y_true, y_prob = sample_data
         # With min_classes=3, all samples should fail for binary data
@@ -80,9 +74,7 @@ class TestBootstrapMetric:
         )
         assert n_failed == 20
 
-    def test_reproducibility_with_seed(
-        self, sample_data: tuple[np.ndarray, np.ndarray]
-    ) -> None:
+    def test_reproducibility_with_seed(self, sample_data: tuple[np.ndarray, np.ndarray]) -> None:
         """Test that same seed produces same results."""
         y_true, y_prob = sample_data
         samples1, _ = bootstrap_metric(
@@ -93,9 +85,7 @@ class TestBootstrapMetric:
         )
         assert samples1 == samples2
 
-    def test_different_seeds_differ(
-        self, sample_data: tuple[np.ndarray, np.ndarray]
-    ) -> None:
+    def test_different_seeds_differ(self, sample_data: tuple[np.ndarray, np.ndarray]) -> None:
         """Test that different seeds produce different results."""
         y_true, y_prob = sample_data
         samples1, _ = bootstrap_metric(
@@ -133,12 +123,12 @@ class TestBootstrapConfusionMetrics:
         np.random.seed(42)
         n = 200
         y_true = np.random.binomial(1, 0.3, n)
-        y_prob = np.where(y_true == 1, np.random.uniform(0.5, 1.0, n), np.random.uniform(0.0, 0.5, n))
+        y_prob = np.where(
+            y_true == 1, np.random.uniform(0.5, 1.0, n), np.random.uniform(0.0, 0.5, n)
+        )
         return y_true, y_prob
 
-    def test_all_metrics_returned(
-        self, binary_data: tuple[np.ndarray, np.ndarray]
-    ) -> None:
+    def test_all_metrics_returned(self, binary_data: tuple[np.ndarray, np.ndarray]) -> None:
         """Test that all confusion metrics are returned."""
         y_true, y_prob = binary_data
         results = bootstrap_confusion_metrics(y_true, y_prob, threshold=0.5, n_bootstrap=50)
@@ -162,13 +152,15 @@ class TestBootstrapConfusionMetrics:
             for v in values:
                 assert 0.0 <= v <= 1.0, f"{metric_name} value {v} out of range"
 
-    def test_threshold_affects_results(
-        self, binary_data: tuple[np.ndarray, np.ndarray]
-    ) -> None:
+    def test_threshold_affects_results(self, binary_data: tuple[np.ndarray, np.ndarray]) -> None:
         """Test that different thresholds produce different results."""
         y_true, y_prob = binary_data
-        results_low = bootstrap_confusion_metrics(y_true, y_prob, threshold=0.3, n_bootstrap=50, seed=42)
-        results_high = bootstrap_confusion_metrics(y_true, y_prob, threshold=0.7, n_bootstrap=50, seed=42)
+        results_low = bootstrap_confusion_metrics(
+            y_true, y_prob, threshold=0.3, n_bootstrap=50, seed=42
+        )
+        results_high = bootstrap_confusion_metrics(
+            y_true, y_prob, threshold=0.7, n_bootstrap=50, seed=42
+        )
         # Different thresholds should give different sensitivities
         assert np.mean(results_low["sensitivity"]) != np.mean(results_high["sensitivity"])
 
@@ -282,9 +274,7 @@ class TestBootstrapAUROC:
         assert isinstance(result, tuple)
         assert len(result) == 3
 
-    def test_ci_bounds_reasonable(
-        self, auroc_data: tuple[np.ndarray, np.ndarray]
-    ) -> None:
+    def test_ci_bounds_reasonable(self, auroc_data: tuple[np.ndarray, np.ndarray]) -> None:
         """Test that CI bounds are reasonable for AUROC."""
         y_true, y_prob = auroc_data
         samples, ci_lower, ci_upper = bootstrap_auroc(y_true, y_prob, n_bootstrap=100)
@@ -297,18 +287,14 @@ class TestBootstrapAUROC:
             # CI should contain most samples
             assert ci_lower < np.percentile(samples, 50) < ci_upper
 
-    def test_samples_in_valid_range(
-        self, auroc_data: tuple[np.ndarray, np.ndarray]
-    ) -> None:
+    def test_samples_in_valid_range(self, auroc_data: tuple[np.ndarray, np.ndarray]) -> None:
         """Test that all AUROC samples are in [0, 1]."""
         y_true, y_prob = auroc_data
         samples, _, _ = bootstrap_auroc(y_true, y_prob, n_bootstrap=50)
         for s in samples:
             assert 0.0 <= s <= 1.0
 
-    def test_reproducibility_with_seed(
-        self, auroc_data: tuple[np.ndarray, np.ndarray]
-    ) -> None:
+    def test_reproducibility_with_seed(self, auroc_data: tuple[np.ndarray, np.ndarray]) -> None:
         """Test that same seed produces same results."""
         y_true, y_prob = auroc_data
         result1 = bootstrap_auroc(y_true, y_prob, n_bootstrap=50, seed=123)

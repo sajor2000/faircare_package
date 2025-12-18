@@ -411,20 +411,14 @@ def create_auroc_forest_plot(
             font=dict(family=TYPOGRAPHY["heading_font"], size=TYPOGRAPHY["heading_size"]),
         ),
         xaxis=dict(
-            title=dict(
-                text=x_axis_text,
-                font=dict(size=TYPOGRAPHY["axis_title_size"])
-            ),
+            title=dict(text=x_axis_text, font=dict(size=TYPOGRAPHY["axis_title_size"])),
             range=[0.4, 1.0],
             showgrid=True,
             gridcolor=SEMANTIC_COLORS["grid"],
             gridwidth=1,
         ),
         yaxis=dict(
-            title=dict(
-                text=y_axis_text,
-                font=dict(size=TYPOGRAPHY["axis_title_size"])
-            ),
+            title=dict(text=y_axis_text, font=dict(size=TYPOGRAPHY["axis_title_size"])),
             showgrid=False,
             categoryorder="array",
             categoryarray=y_labels,
@@ -576,18 +570,12 @@ def create_calibration_plot_by_subgroup(
             font=dict(family=TYPOGRAPHY["heading_font"], size=TYPOGRAPHY["subheading_size"]),
         ),
         xaxis=dict(
-            title=dict(
-                text=x_axis_text,
-                font=dict(size=TYPOGRAPHY["axis_title_size"])
-            ),
+            title=dict(text=x_axis_text, font=dict(size=TYPOGRAPHY["axis_title_size"])),
             tickformat=".0%",
             range=[0, 1],
         ),
         yaxis=dict(
-            title=dict(
-                text=y_axis_text,
-                font=dict(size=TYPOGRAPHY["axis_title_size"])
-            ),
+            title=dict(text=y_axis_text, font=dict(size=TYPOGRAPHY["axis_title_size"])),
             tickformat=".0%",
             range=[0, 1],
         ),
@@ -767,18 +755,12 @@ def create_decision_curve_by_subgroup(
             font=dict(family=TYPOGRAPHY["heading_font"], size=TYPOGRAPHY["subheading_size"]),
         ),
         xaxis=dict(
-            title=dict(
-                text=x_axis_text,
-                font=dict(size=TYPOGRAPHY["axis_title_size"])
-            ),
+            title=dict(text=x_axis_text, font=dict(size=TYPOGRAPHY["axis_title_size"])),
             tickformat=".0%",
             range=list(threshold_range),
         ),
         yaxis=dict(
-            title=dict(
-                text=y_axis_text,
-                font=dict(size=TYPOGRAPHY["axis_title_size"])
-            ),
+            title=dict(text=y_axis_text, font=dict(size=TYPOGRAPHY["axis_title_size"])),
         ),
         legend=LEGEND_POSITIONS["top_horizontal"],
         template="faircareai",

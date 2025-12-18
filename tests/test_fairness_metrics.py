@@ -43,11 +43,13 @@ class TestComputeFairnessMetrics:
             np.clip(np.random.normal(0.65, 0.15, n), 0.01, 0.99),
             np.clip(np.random.normal(0.35, 0.15, n), 0.01, 0.99),
         )
-        return pl.DataFrame({
-            "y_true": y_true,
-            "y_prob": y_prob,
-            "group": groups,
-        })
+        return pl.DataFrame(
+            {
+                "y_true": y_true,
+                "y_prob": y_prob,
+                "group": groups,
+            }
+        )
 
     def test_returns_dict(self, sample_df: pl.DataFrame) -> None:
         """Test that function returns a dictionary."""
@@ -61,9 +63,7 @@ class TestComputeFairnessMetrics:
 
     def test_contains_threshold(self, sample_df: pl.DataFrame) -> None:
         """Test that result contains threshold."""
-        result = compute_fairness_metrics(
-            sample_df, "y_prob", "y_true", "group", threshold=0.6
-        )
+        result = compute_fairness_metrics(sample_df, "y_prob", "y_true", "group", threshold=0.6)
         assert result["threshold"] == 0.6
 
     def test_contains_group_metrics(self, sample_df: pl.DataFrame) -> None:
@@ -90,9 +90,7 @@ class TestComputeFairnessMetrics:
 
     def test_specified_reference_used(self, sample_df: pl.DataFrame) -> None:
         """Test that specified reference is used."""
-        result = compute_fairness_metrics(
-            sample_df, "y_prob", "y_true", "group", reference="B"
-        )
+        result = compute_fairness_metrics(sample_df, "y_prob", "y_true", "group", reference="B")
         assert result["reference"] == "B"
 
     def test_contains_demographic_parity_ratio(self, sample_df: pl.DataFrame) -> None:
@@ -130,32 +128,32 @@ class TestComputeFairnessMetrics:
 
     def test_is_reference_flag(self, sample_df: pl.DataFrame) -> None:
         """Test that is_reference flag is set correctly."""
-        result = compute_fairness_metrics(
-            sample_df, "y_prob", "y_true", "group", reference="B"
-        )
+        result = compute_fairness_metrics(sample_df, "y_prob", "y_true", "group", reference="B")
         assert result["group_metrics"]["B"]["is_reference"] is True
         assert result["group_metrics"]["A"]["is_reference"] is False
 
     def test_small_group_handling(self) -> None:
         """Test handling of small groups."""
-        df = pl.DataFrame({
-            "y_true": [1, 0, 1] + [0, 1] * 100,
-            "y_prob": [0.8, 0.2, 0.7] + [0.3, 0.7] * 100,
-            "group": ["Small"] * 3 + ["Large"] * 200,
-        })
+        df = pl.DataFrame(
+            {
+                "y_true": [1, 0, 1] + [0, 1] * 100,
+                "y_prob": [0.8, 0.2, 0.7] + [0.3, 0.7] * 100,
+                "group": ["Small"] * 3 + ["Large"] * 200,
+            }
+        )
         result = compute_fairness_metrics(df, "y_prob", "y_true", "group")
         assert "error" in result["group_metrics"]["Small"]
 
     def test_reference_error_propagated(self) -> None:
         """Test that error is returned when reference has insufficient data."""
-        df = pl.DataFrame({
-            "y_true": [1, 0, 1] + [0, 1] * 100,
-            "y_prob": [0.8, 0.2, 0.7] + [0.3, 0.7] * 100,
-            "group": ["Small"] * 3 + ["Large"] * 200,
-        })
-        result = compute_fairness_metrics(
-            df, "y_prob", "y_true", "group", reference="Small"
+        df = pl.DataFrame(
+            {
+                "y_true": [1, 0, 1] + [0, 1] * 100,
+                "y_prob": [0.8, 0.2, 0.7] + [0.3, 0.7] * 100,
+                "group": ["Small"] * 3 + ["Large"] * 200,
+            }
         )
+        result = compute_fairness_metrics(df, "y_prob", "y_true", "group", reference="Small")
         assert "error" in result
 
 
@@ -228,11 +226,13 @@ class TestComputeDisparityIndex:
             np.clip(np.random.normal(0.65, 0.15, n), 0.01, 0.99),
             np.clip(np.random.normal(0.35, 0.15, n), 0.01, 0.99),
         )
-        return pl.DataFrame({
-            "y_true": y_true,
-            "y_prob": y_prob,
-            "group": groups,
-        })
+        return pl.DataFrame(
+            {
+                "y_true": y_true,
+                "y_prob": y_prob,
+                "group": groups,
+            }
+        )
 
     def test_returns_dict(self, sample_df: pl.DataFrame) -> None:
         """Test that function returns a dictionary."""
@@ -263,11 +263,13 @@ class TestComputeDisparityIndex:
 
     def test_error_returned_on_insufficient_data(self) -> None:
         """Test that error is returned when data is insufficient."""
-        df = pl.DataFrame({
-            "y_true": [1, 0, 1],
-            "y_prob": [0.8, 0.2, 0.7],
-            "group": ["Small"] * 3,
-        })
+        df = pl.DataFrame(
+            {
+                "y_true": [1, 0, 1],
+                "y_prob": [0.8, 0.2, 0.7],
+                "group": ["Small"] * 3,
+            }
+        )
         result = compute_disparity_index(df, "y_prob", "y_true", "group")
         assert "error" in result
 
@@ -315,11 +317,13 @@ class TestComputeCalibrationByGroup:
             np.clip(np.random.normal(0.65, 0.15, n), 0.01, 0.99),
             np.clip(np.random.normal(0.35, 0.15, n), 0.01, 0.99),
         )
-        return pl.DataFrame({
-            "y_true": y_true,
-            "y_prob": y_prob,
-            "group": groups,
-        })
+        return pl.DataFrame(
+            {
+                "y_true": y_true,
+                "y_prob": y_prob,
+                "group": groups,
+            }
+        )
 
     def test_returns_dict(self, sample_df: pl.DataFrame) -> None:
         """Test that function returns a dictionary."""
@@ -344,11 +348,13 @@ class TestComputeCalibrationByGroup:
 
     def test_small_group_handling(self) -> None:
         """Test handling of small groups."""
-        df = pl.DataFrame({
-            "y_true": [1, 0, 1, 0, 1] + [0, 1] * 100,
-            "y_prob": [0.8, 0.2, 0.7, 0.3, 0.6] + [0.3, 0.7] * 100,
-            "group": ["Small"] * 5 + ["Large"] * 200,
-        })
+        df = pl.DataFrame(
+            {
+                "y_true": [1, 0, 1, 0, 1] + [0, 1] * 100,
+                "y_prob": [0.8, 0.2, 0.7, 0.3, 0.6] + [0.3, 0.7] * 100,
+                "group": ["Small"] * 5 + ["Large"] * 200,
+            }
+        )
         result = compute_calibration_by_group(df, "y_prob", "y_true", "group")
         assert "error" in result["groups"]["Small"]
 
@@ -368,11 +374,13 @@ class TestComputeThresholdFairness:
             np.clip(np.random.normal(0.65, 0.15, n), 0.01, 0.99),
             np.clip(np.random.normal(0.35, 0.15, n), 0.01, 0.99),
         )
-        return pl.DataFrame({
-            "y_true": y_true,
-            "y_prob": y_prob,
-            "group": groups,
-        })
+        return pl.DataFrame(
+            {
+                "y_true": y_true,
+                "y_prob": y_prob,
+                "group": groups,
+            }
+        )
 
     def test_returns_dict(self, sample_df: pl.DataFrame) -> None:
         """Test that function returns a dictionary."""
@@ -427,11 +435,13 @@ class TestComputeGroupAurocComparison:
             np.clip(np.random.normal(0.65, 0.15, n), 0.01, 0.99),
             np.clip(np.random.normal(0.35, 0.15, n), 0.01, 0.99),
         )
-        return pl.DataFrame({
-            "y_true": y_true,
-            "y_prob": y_prob,
-            "group": groups,
-        })
+        return pl.DataFrame(
+            {
+                "y_true": y_true,
+                "y_prob": y_prob,
+                "group": groups,
+            }
+        )
 
     def test_returns_dict(self, sample_df: pl.DataFrame) -> None:
         """Test that function returns a dictionary."""

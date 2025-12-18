@@ -96,7 +96,10 @@ def plot_discrimination_curves(
         fig = make_subplots(
             rows=1,
             cols=2,
-            subplot_titles=(f"ROC Curve - {auroc_label} (RECOMMENDED)", "Precision-Recall Curve (CAUTION)"),
+            subplot_titles=(
+                f"ROC Curve - {auroc_label} (RECOMMENDED)",
+                "Precision-Recall Curve (CAUTION)",
+            ),
             horizontal_spacing=0.12,
         )
     else:
@@ -372,10 +375,7 @@ def plot_calibration_curve(
     # Apply theme
     fig = apply_faircareai_theme(fig)
     fig.update_layout(
-        title=dict(
-            text=title_text,
-            x=0.5
-        ),
+        title=dict(text=title_text, x=0.5),
         xaxis_title=x_axis_title,
         yaxis_title=y_axis_title,
         height=500,
@@ -528,21 +528,10 @@ def plot_threshold_analysis(
 
     # Update axes with descriptive labels
     fig.update_xaxes(
-        title_text="Decision Threshold (risk cutoff for flagging patients)",
-        row=2,
-        col=1
+        title_text="Decision Threshold (risk cutoff for flagging patients)", row=2, col=1
     )
-    fig.update_yaxes(
-        title_text="Performance Metric Value",
-        tickformat=".0%",
-        row=1,
-        col=1
-    )
-    fig.update_yaxes(
-        title_text="% of Patients Flagged as High-Risk",
-        row=2,
-        col=1
-    )
+    fig.update_yaxes(title_text="Performance Metric Value", tickformat=".0%", row=1, col=1)
+    fig.update_yaxes(title_text="% of Patients Flagged as High-Risk", row=2, col=1)
 
     # Generate alt text for WCAG 2.1 AA compliance
     threshold_text = f" Selected threshold: {selected_threshold:.2f}." if selected_threshold else ""

@@ -232,9 +232,7 @@ class TestConvenienceMethods:
             path.unlink(missing_ok=True)
 
     @patch("faircareai.reports.generator.generate_governance_pdf_report")
-    def test_to_governance_pdf(
-        self, mock_generate: MagicMock, basic_results: AuditResults
-    ) -> None:
+    def test_to_governance_pdf(self, mock_generate: MagicMock, basic_results: AuditResults) -> None:
         """Test to_governance_pdf convenience method."""
         mock_generate.return_value = Path("/tmp/test.pdf")
 
@@ -295,9 +293,7 @@ class TestGovernanceOverallFigures:
         figures = create_governance_overall_figures(results_with_performance)
         assert isinstance(figures, dict)
 
-    def test_creates_expected_figure_keys(
-        self, results_with_performance: AuditResults
-    ) -> None:
+    def test_creates_expected_figure_keys(self, results_with_performance: AuditResults) -> None:
         """Test that expected figure keys are created."""
         from faircareai.visualization.governance_dashboard import (
             create_governance_overall_figures,
@@ -332,9 +328,27 @@ class TestGovernanceSubgroupFigures:
                 "race": {
                     "reference": "White",
                     "groups": {
-                        "White": {"auroc": 0.85, "tpr": 0.80, "fpr": 0.15, "selection_rate": 0.30, "n": 500},
-                        "Black": {"auroc": 0.82, "tpr": 0.75, "fpr": 0.18, "selection_rate": 0.35, "n": 300},
-                        "Hispanic": {"auroc": 0.83, "tpr": 0.78, "fpr": 0.16, "selection_rate": 0.32, "n": 200},
+                        "White": {
+                            "auroc": 0.85,
+                            "tpr": 0.80,
+                            "fpr": 0.15,
+                            "selection_rate": 0.30,
+                            "n": 500,
+                        },
+                        "Black": {
+                            "auroc": 0.82,
+                            "tpr": 0.75,
+                            "fpr": 0.18,
+                            "selection_rate": 0.35,
+                            "n": 300,
+                        },
+                        "Hispanic": {
+                            "auroc": 0.83,
+                            "tpr": 0.78,
+                            "fpr": 0.16,
+                            "selection_rate": 0.32,
+                            "n": 200,
+                        },
                     },
                 },
             },
@@ -352,9 +366,7 @@ class TestGovernanceSubgroupFigures:
         figures = create_governance_subgroup_figures(results_with_subgroups)
         assert isinstance(figures, dict)
 
-    def test_creates_figures_per_attribute(
-        self, results_with_subgroups: AuditResults
-    ) -> None:
+    def test_creates_figures_per_attribute(self, results_with_subgroups: AuditResults) -> None:
         """Test that figures are created for each sensitive attribute."""
         from faircareai.visualization.governance_dashboard import (
             create_governance_subgroup_figures,
@@ -363,9 +375,7 @@ class TestGovernanceSubgroupFigures:
         figures = create_governance_subgroup_figures(results_with_subgroups)
         assert "race" in figures
 
-    def test_creates_four_figures_per_attribute(
-        self, results_with_subgroups: AuditResults
-    ) -> None:
+    def test_creates_four_figures_per_attribute(self, results_with_subgroups: AuditResults) -> None:
         """Test that 4 figures are created per attribute."""
         from faircareai.visualization.governance_dashboard import (
             create_governance_subgroup_figures,
@@ -865,16 +875,12 @@ class TestPersonaTerminologyInVisualization:
         y_prob = np.array([0.1, 0.9, 0.2, 0.8, 0.7, 0.3, 0.6, 0.4, 0.85, 0.15])
 
         # Test DATA_SCIENTIST persona
-        fig_ds = create_calibration_plot(
-            y_true, y_prob, persona=OutputPersona.DATA_SCIENTIST
-        )
+        fig_ds = create_calibration_plot(y_true, y_prob, persona=OutputPersona.DATA_SCIENTIST)
         # Check that the figure was created
         assert fig_ds is not None
 
         # Test GOVERNANCE persona
-        fig_gov = create_calibration_plot(
-            y_true, y_prob, persona=OutputPersona.GOVERNANCE
-        )
+        fig_gov = create_calibration_plot(y_true, y_prob, persona=OutputPersona.GOVERNANCE)
         assert fig_gov is not None
 
     def test_roc_curve_uses_persona_labels(self) -> None:
@@ -926,8 +932,13 @@ class TestPersonaTerminologyMetricLabels:
 
         # Key OPTIONAL metrics that should have terminology
         optional_metrics = [
-            "sensitivity", "specificity", "ppv", "npv",
-            "brier_score", "oe_ratio", "ici"
+            "sensitivity",
+            "specificity",
+            "ppv",
+            "npv",
+            "brier_score",
+            "oe_ratio",
+            "ici",
         ]
 
         for metric in optional_metrics:

@@ -1069,20 +1069,22 @@ def create_governance_overall_figures(results: "AuditResults") -> dict[str, go.F
     slope = cal.get("calibration_slope", 1.0)
     slope_status = "PASS" if 0.8 <= slope <= 1.2 else "REVIEW"
 
-    slope_color = FAIRCAREAI_COLORS["success"] if 0.8 <= slope <= 1.2 else FAIRCAREAI_COLORS["error"]
+    slope_color = (
+        FAIRCAREAI_COLORS["success"] if 0.8 <= slope <= 1.2 else FAIRCAREAI_COLORS["error"]
+    )
     fig_cal.update_layout(
         title=dict(text="<b>Calibration</b>", font=dict(size=20)),
         xaxis=dict(
             title="Predicted Risk (what the model says)",
             range=[0, 1],
             tickfont={"size": 14},
-            tickformat=".0%"
+            tickformat=".0%",
         ),
         yaxis=dict(
             title="Observed Rate (what actually happened)",
             range=[0, 1],
             tickfont={"size": 14},
-            tickformat=".0%"
+            tickformat=".0%",
         ),
         height=320,
         margin=dict(l=50, r=20, t=70, b=70),
@@ -1176,7 +1178,11 @@ def create_governance_overall_figures(results: "AuditResults") -> dict[str, go.F
     metrics = ["Sensitivity", "Specificity", "PPV"]
     values = [sensitivity, specificity, ppv]
     colors = [
-        FAIRCAREAI_COLORS["success"] if v >= 70 else FAIRCAREAI_COLORS["warning"] if v >= 50 else FAIRCAREAI_COLORS["error"]
+        FAIRCAREAI_COLORS["success"]
+        if v >= 70
+        else FAIRCAREAI_COLORS["warning"]
+        if v >= 50
+        else FAIRCAREAI_COLORS["error"]
         for v in values
     ]
 
@@ -1193,15 +1199,11 @@ def create_governance_overall_figures(results: "AuditResults") -> dict[str, go.F
 
     fig_class.update_layout(
         title=dict(
-            text=f"<b>Classification Metrics at Threshold {threshold:.2f}</b>",
-            font=dict(size=20)
+            text=f"<b>Classification Metrics at Threshold {threshold:.2f}</b>", font=dict(size=20)
         ),
         xaxis=dict(title="Performance Metric", tickfont={"size": 14}),
         yaxis=dict(
-            title="Percentage of Patients",
-            range=[0, 110],
-            ticksuffix="%",
-            tickfont={"size": 14}
+            title="Percentage of Patients", range=[0, 110], ticksuffix="%", tickfont={"size": 14}
         ),
         height=300,
         margin=dict(l=40, r=20, t=70, b=60),
@@ -1316,45 +1318,61 @@ def create_governance_subgroup_figures(results: "AuditResults") -> dict[str, dic
 
         # 1. AUROC by Subgroup
         fig_auroc = _create_subgroup_bar_chart(
-            groups, auroc_vals, colors,
+            groups,
+            auroc_vals,
+            colors,
             "Model Accuracy (AUROC) by Demographic Group",
-            y_range=[0.5, 1], threshold_line=0.7, threshold_label="Acceptable minimum (0.7)",
+            y_range=[0.5, 1],
+            threshold_line=0.7,
+            threshold_label="Acceptable minimum (0.7)",
             explanation=SUBGROUP_EXPLANATIONS["auroc"],
             y_axis_title="AUROC (Model Accuracy Score)",
-            x_axis_title="Demographic Group"
+            x_axis_title="Demographic Group",
         )
         figures["AUROC by Subgroup"] = fig_auroc
 
         # 2. TPR (Sensitivity) by Subgroup
         fig_tpr = _create_subgroup_bar_chart(
-            groups, [v * 100 for v in tpr_vals], colors,
+            groups,
+            [v * 100 for v in tpr_vals],
+            colors,
             "Sensitivity: % of Actual Cases Detected by Group",
-            y_range=[0, 100], y_suffix="%", threshold_line=None,
+            y_range=[0, 100],
+            y_suffix="%",
+            threshold_line=None,
             explanation=SUBGROUP_EXPLANATIONS["sensitivity"],
             y_axis_title="True Positive Rate (%)",
-            x_axis_title="Demographic Group"
+            x_axis_title="Demographic Group",
         )
         figures["Sensitivity by Subgroup"] = fig_tpr
 
         # 3. FPR by Subgroup
         fig_fpr = _create_subgroup_bar_chart(
-            groups, [v * 100 for v in fpr_vals], colors,
+            groups,
+            [v * 100 for v in fpr_vals],
+            colors,
             "False Alarms: % Incorrectly Flagged by Group",
-            y_range=[0, 50], y_suffix="%", threshold_line=None,
+            y_range=[0, 50],
+            y_suffix="%",
+            threshold_line=None,
             explanation=SUBGROUP_EXPLANATIONS["fpr"],
             y_axis_title="False Positive Rate (%)",
-            x_axis_title="Demographic Group"
+            x_axis_title="Demographic Group",
         )
         figures["FPR by Subgroup"] = fig_fpr
 
         # 4. Selection Rate by Subgroup
         fig_sel = _create_subgroup_bar_chart(
-            groups, [v * 100 for v in selection_vals], colors,
+            groups,
+            [v * 100 for v in selection_vals],
+            colors,
             "Intervention Rate: % Flagged as High-Risk by Group",
-            y_range=[0, 100], y_suffix="%", threshold_line=None,
+            y_range=[0, 100],
+            y_suffix="%",
+            threshold_line=None,
             explanation=SUBGROUP_EXPLANATIONS["selection"],
             y_axis_title="Selection Rate (% flagged)",
-            x_axis_title="Demographic Group"
+            x_axis_title="Demographic Group",
         )
         figures["Selection Rate by Subgroup"] = fig_sel
 
@@ -1446,14 +1464,14 @@ def _create_subgroup_bar_chart(
             title=x_axis_title,
             tickfont={"size": 14},
             tickangle=45 if len(groups) > 4 else 0,
-            title_font=dict(size=14)
+            title_font=dict(size=14),
         ),
         yaxis=dict(
             title=y_axis_title,
             range=y_range,
             ticksuffix=y_suffix,
             tickfont={"size": 14},
-            title_font=dict(size=14)
+            title_font=dict(size=14),
         ),
         height=280,
         margin=dict(l=60, r=20, t=55, b=90),

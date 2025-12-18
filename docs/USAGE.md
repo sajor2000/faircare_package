@@ -722,33 +722,52 @@ faircareai dashboard --port 8080
 
 ### faircareai audit
 
-Run audit from command line.
+Run audit from command line. Supports both **Parquet** and **CSV** input files.
 
 ```bash
 faircareai audit DATA_PATH [OPTIONS]
 ```
 
 **Arguments:**
-- `DATA_PATH`: Path to predictions file (parquet or csv)
+- `DATA_PATH`: Path to predictions file (`.parquet` or `.csv`)
 
 **Options:**
-- `-p, --pred-col`: Prediction column name (required)
-- `-t, --target-col`: Target column name (required)
-- `-o, --output`: Output file path (.html, .pdf, .pptx)
-- `--threshold`: Decision threshold (default: 0.5)
-- `--model-name`: Model display name
-- `-a, --attributes`: Sensitive attributes (can repeat)
 
-**Example:**
+| Option | Description | Example |
+|--------|-------------|---------|
+| `-p`, `--pred-col` | Prediction column name (required) | `-p risk_score` |
+| `-t`, `--target-col` | Target/outcome column name (required) | `-t readmit_30d` |
+| `-a`, `--attribute` | Sensitive attribute (repeatable) | `-a race -a sex` |
+| `-o`, `--output` | Output file path | `-o report.html` |
+| `--format` | Output format (html, pdf, json) | `--format pdf` |
+| `--persona` | Output persona (data_scientist, governance) | `--persona governance` |
+| `--threshold` | Decision threshold (0-1) | `--threshold 0.3` |
+| `--model-name` | Model display name | `--model-name "Risk v2"` |
+
+**Examples:**
 
 ```bash
+# Audit a Parquet file (recommended for large datasets)
+faircareai audit predictions.parquet -p risk_score -t outcome -o report.html
+
+# Audit a CSV file
+faircareai audit patient_data.csv -p risk_score -t readmit_30d -a race -a sex
+
+# Generate governance PDF report from CSV
+faircareai audit data.csv -p risk_score -t outcome --persona governance --format pdf -o governance.pdf
+
+# Full example with all options
 faircareai audit predictions.parquet \
   -p risk_score \
   -t outcome \
   -o report.html \
   --model-name "Readmission Risk v2" \
   -a race \
-  -a sex
+  -a sex \
+  --threshold 0.3
+
+# Run audit on Parquet with custom threshold
+faircareai audit predictions.parquet -p risk_score -t outcome --threshold 0.3
 ```
 
 ### faircareai info
@@ -806,19 +825,35 @@ faircareai version
 
 ### Loading Different Data Formats
 
+FairCareAI accepts multiple input formats:
+
+| Format | Extension | Best For |
+|--------|-----------|----------|
+| **Parquet** | `.parquet` | Large datasets (>100k rows), faster loading |
+| **CSV** | `.csv` | Simple data exchange, human-readable |
+| **Polars DataFrame** | - | In-memory analysis with Polars |
+| **Pandas DataFrame** | - | In-memory analysis with pandas |
+
 ```python
-# Polars DataFrame
+# Option 1: Parquet file (recommended for large datasets)
+audit = FairCareAudit("predictions.parquet", pred_col="risk", target_col="outcome")
+
+# Option 2: CSV file
+audit = FairCareAudit("patient_data.csv", pred_col="risk", target_col="outcome")
+
+# Option 3: Polars DataFrame
 import polars as pl
 df = pl.read_parquet("data.parquet")
 audit = FairCareAudit(df, pred_col="risk", target_col="outcome")
 
-# Pandas DataFrame
+# Option 4: Pandas DataFrame
 import pandas as pd
 df = pd.read_csv("data.csv")
 audit = FairCareAudit(df, pred_col="risk", target_col="outcome")
 
-# File path
-audit = FairCareAudit("data.parquet", pred_col="risk", target_col="outcome")
+# Saving predictions as Parquet (for future use)
+import polars as pl
+df.write_parquet("predictions.parquet")
 ```
 
 ### Custom Fairness Thresholds

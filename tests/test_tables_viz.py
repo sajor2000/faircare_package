@@ -220,6 +220,7 @@ class TestCreateExecutiveScorecardImportError:
         # Skip if great_tables is actually installed (we can't easily test this)
         try:
             import great_tables  # noqa: F401
+
             pytest.skip("great_tables is installed, cannot test import error")
         except ImportError:
             # great_tables not installed, we can test the error

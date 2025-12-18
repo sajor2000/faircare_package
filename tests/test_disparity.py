@@ -274,9 +274,7 @@ class TestComputeDisparities:
     def test_specified_nonexistent_raises(self, metrics_df: pl.DataFrame) -> None:
         """Test that nonexistent specified reference raises error."""
         with pytest.raises(ValueError, match="not found"):
-            compute_disparities(
-                metrics_df, reference_strategy="specified", reference_group="Asian"
-            )
+            compute_disparities(metrics_df, reference_strategy="specified", reference_group="Asian")
 
     def test_specified_without_group_raises(self, metrics_df: pl.DataFrame) -> None:
         """Test that specified strategy without group raises error."""
@@ -298,9 +296,7 @@ class TestComputeDisparities:
 
     def test_single_group(self) -> None:
         """Test handling of single group."""
-        df = pl.DataFrame(
-            {"group": ["White"], "n": [100], "n_positive": [50], "tpr": [0.80]}
-        )
+        df = pl.DataFrame({"group": ["White"], "n": [100], "n_positive": [50], "tpr": [0.80]})
         result = compute_disparities(df)
         assert len(result) == 0
 

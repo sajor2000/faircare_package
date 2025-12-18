@@ -596,9 +596,7 @@ def _normalize_persona(persona: OutputPersona | str) -> OutputPersona:
             return OutputPersona.DATA_SCIENTIST
         if persona_lower in ("governance", "executive", "summary", "streamlined"):
             return OutputPersona.GOVERNANCE
-        raise ValueError(
-            f"Unknown persona '{persona}'. Use 'data_scientist' or 'governance'."
-        )
+        raise ValueError(f"Unknown persona '{persona}'. Use 'data_scientist' or 'governance'.")
     raise TypeError(f"persona must be OutputPersona or str, got {type(persona)}")
 
 

@@ -84,9 +84,7 @@ class TestComputeOverallPerformance:
         assert "sensitivity" in result["classification_at_threshold"]
         assert "specificity" in result["classification_at_threshold"]
 
-    def test_contains_threshold_analysis(
-        self, sample_data: tuple[np.ndarray, np.ndarray]
-    ) -> None:
+    def test_contains_threshold_analysis(self, sample_data: tuple[np.ndarray, np.ndarray]) -> None:
         """Test that threshold analysis is included."""
         y_true, y_prob = sample_data
         result = compute_overall_performance(y_true, y_prob, bootstrap_ci=False)
@@ -477,9 +475,7 @@ class TestComputeThresholdAnalysis:
         result = compute_threshold_analysis(y_true, y_prob, thresholds)
         assert result["thresholds"] == thresholds
 
-    def test_metrics_for_each_threshold(
-        self, sample_data: tuple[np.ndarray, np.ndarray]
-    ) -> None:
+    def test_metrics_for_each_threshold(self, sample_data: tuple[np.ndarray, np.ndarray]) -> None:
         """Test that metrics are computed for each threshold."""
         y_true, y_prob = sample_data
         thresholds = [0.3, 0.5, 0.7]
@@ -655,11 +651,13 @@ class TestComputeSubgroupPerformance:
             np.clip(np.random.normal(0.65, 0.15, n), 0.01, 0.99),
             np.clip(np.random.normal(0.35, 0.15, n), 0.01, 0.99),
         )
-        return pl.DataFrame({
-            "y_true": y_true,
-            "y_prob": y_prob,
-            "group": groups,
-        })
+        return pl.DataFrame(
+            {
+                "y_true": y_true,
+                "y_prob": y_prob,
+                "group": groups,
+            }
+        )
 
     def test_returns_dict(self, sample_df: pl.DataFrame) -> None:
         """Test that function returns a dictionary."""
@@ -715,14 +713,14 @@ class TestComputeSubgroupPerformance:
 
     def test_small_group_handling(self) -> None:
         """Test handling of small groups."""
-        df = pl.DataFrame({
-            "y_true": [1, 0, 1] + [0, 1] * 50,
-            "y_prob": [0.8, 0.2, 0.7] + [0.3, 0.7] * 50,
-            "group": ["Small"] * 3 + ["Large"] * 100,
-        })
-        result = compute_subgroup_performance(
-            df, "y_true", "y_prob", "group", bootstrap_ci=False
+        df = pl.DataFrame(
+            {
+                "y_true": [1, 0, 1] + [0, 1] * 50,
+                "y_prob": [0.8, 0.2, 0.7] + [0.3, 0.7] * 50,
+                "group": ["Small"] * 3 + ["Large"] * 100,
+            }
         )
+        result = compute_subgroup_performance(df, "y_true", "y_prob", "group", bootstrap_ci=False)
         assert "error" in result["groups"]["Small"]
         assert "Insufficient" in result["groups"]["Small"]["error"]
 

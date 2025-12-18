@@ -352,7 +352,10 @@ class TestCreateCalibrationPlotBySubgroup:
         results = {
             "groups": {
                 "Group A": {
-                    "calibration_curve": {"prob_pred": [0.1, 0.3, 0.5], "prob_true": [0.12, 0.28, 0.52]},
+                    "calibration_curve": {
+                        "prob_pred": [0.1, 0.3, 0.5],
+                        "prob_true": [0.12, 0.28, 0.52],
+                    },
                     "n": 100,
                     "oe_ratio": 1.0,
                     "brier_score": 0.1,
@@ -406,13 +409,21 @@ class TestCreateCalibrationPlotBySubgroup:
 
     def test_custom_title(self) -> None:
         """Test with custom title."""
-        results = {"groups": {"Group A": {"calibration_curve": {"prob_pred": [0.5], "prob_true": [0.5]}, "n": 100}}}
+        results = {
+            "groups": {
+                "Group A": {"calibration_curve": {"prob_pred": [0.5], "prob_true": [0.5]}, "n": 100}
+            }
+        }
         fig = create_calibration_plot_by_subgroup(results, title="Custom Cal Title")
         assert "Custom Cal Title" in fig.layout.title.text
 
     def test_alt_text_in_meta(self) -> None:
         """Test that alt text is included in metadata."""
-        results = {"groups": {"Group A": {"calibration_curve": {"prob_pred": [0.5], "prob_true": [0.5]}, "n": 100}}}
+        results = {
+            "groups": {
+                "Group A": {"calibration_curve": {"prob_pred": [0.5], "prob_true": [0.5]}, "n": 100}
+            }
+        }
         fig = create_calibration_plot_by_subgroup(results)
         assert "description" in fig.layout.meta
 
@@ -496,8 +507,10 @@ class TestCreateDecisionCurveBySubgroup:
                     "decision_curve": {
                         "thresholds": thresholds.tolist(),
                         "net_benefit_model": [0.1] * len(thresholds),
-                        "net_benefit_all": [0.08] * len(thresholds),  # Required for reference strategies
-                        "net_benefit_none": [0] * len(thresholds),  # Required for reference strategies
+                        "net_benefit_all": [0.08]
+                        * len(thresholds),  # Required for reference strategies
+                        "net_benefit_none": [0]
+                        * len(thresholds),  # Required for reference strategies
                     },
                     "n": 100,
                 }
@@ -528,8 +541,12 @@ class TestCreateRiskDistributionPlot:
             "groups": {
                 "Group A": {
                     "n": 100,
-                    "events": {"histogram": {"counts": [10, 20, 30], "bin_centers": [0.3, 0.5, 0.7]}},
-                    "non_events": {"histogram": {"counts": [30, 20, 10], "bin_centers": [0.2, 0.4, 0.6]}},
+                    "events": {
+                        "histogram": {"counts": [10, 20, 30], "bin_centers": [0.3, 0.5, 0.7]}
+                    },
+                    "non_events": {
+                        "histogram": {"counts": [30, 20, 10], "bin_centers": [0.2, 0.4, 0.6]}
+                    },
                 }
             }
         }
@@ -634,7 +651,10 @@ class TestCreateVancalsterDashboard:
                 "Group A": {
                     "discrimination": {"auroc": 0.85, "auroc_ci_95": [0.80, 0.90]},
                     "calibration": {
-                        "calibration_curve": {"prob_pred": [0.1, 0.3, 0.5], "prob_true": [0.12, 0.28, 0.52]}
+                        "calibration_curve": {
+                            "prob_pred": [0.1, 0.3, 0.5],
+                            "prob_true": [0.12, 0.28, 0.52],
+                        }
                     },
                     "clinical_utility": {
                         "decision_curve": {
@@ -683,17 +703,29 @@ class TestCreateVancalsterDashboard:
                     "discrimination": {"auroc": 0.85},
                     "calibration": {"calibration_curve": {"prob_pred": [0.5], "prob_true": [0.5]}},
                     "clinical_utility": {
-                        "decision_curve": {"thresholds": thresholds.tolist(), "net_benefit_model": [0.1] * len(thresholds)}
+                        "decision_curve": {
+                            "thresholds": thresholds.tolist(),
+                            "net_benefit_model": [0.1] * len(thresholds),
+                        }
                     },
-                    "risk_distribution": {"events": {"mean": 0.7, "q25": 0.6, "q75": 0.8}, "non_events": {}},
+                    "risk_distribution": {
+                        "events": {"mean": 0.7, "q25": 0.6, "q75": 0.8},
+                        "non_events": {},
+                    },
                 },
                 "Group B": {
                     "discrimination": {"auroc": 0.78},
                     "calibration": {"calibration_curve": {"prob_pred": [0.5], "prob_true": [0.45]}},
                     "clinical_utility": {
-                        "decision_curve": {"thresholds": thresholds.tolist(), "net_benefit_model": [0.08] * len(thresholds)}
+                        "decision_curve": {
+                            "thresholds": thresholds.tolist(),
+                            "net_benefit_model": [0.08] * len(thresholds),
+                        }
                     },
-                    "risk_distribution": {"events": {"mean": 0.65, "q25": 0.55, "q75": 0.75}, "non_events": {}},
+                    "risk_distribution": {
+                        "events": {"mean": 0.65, "q25": 0.55, "q75": 0.75},
+                        "non_events": {},
+                    },
                 },
             }
         }
@@ -737,7 +769,9 @@ class TestCreateVancalsterDashboard:
                 "Group A": {
                     "discrimination": {"auroc": 0.85},
                     "calibration": {"calibration_curve": {}},
-                    "clinical_utility": {"decision_curve": {"thresholds": [], "net_benefit_model": []}},
+                    "clinical_utility": {
+                        "decision_curve": {"thresholds": [], "net_benefit_model": []}
+                    },
                     "risk_distribution": {},
                 }
             }

@@ -149,9 +149,7 @@ class TestMetricComputationError:
 
     def test_attributes_set(self) -> None:
         """Test that attributes are correctly set."""
-        error = MetricComputationError(
-            metric_name="TPR", reason="division by zero", group="GroupA"
-        )
+        error = MetricComputationError(metric_name="TPR", reason="division by zero", group="GroupA")
         assert error.metric_name == "TPR"
         assert error.reason == "division by zero"
         assert error.group == "GroupA"
@@ -167,9 +165,7 @@ class TestColumnNotFoundError:
 
     def test_with_available(self) -> None:
         """Test error message with available columns."""
-        error = ColumnNotFoundError(
-            column="target", available=["y_true", "y_prob", "group"]
-        )
+        error = ColumnNotFoundError(column="target", available=["y_true", "y_prob", "group"])
         assert "target" in str(error)
         assert "y_true" in str(error)
 
@@ -231,9 +227,7 @@ class TestBootstrapError:
 
     def test_with_iteration_counts(self) -> None:
         """Test error message with iteration counts."""
-        error = BootstrapError(
-            reason="too many failures", n_successful=50, n_required=100
-        )
+        error = BootstrapError(reason="too many failures", n_successful=50, n_required=100)
         assert "50/100" in str(error)
 
     def test_without_iteration_counts(self) -> None:
@@ -244,9 +238,7 @@ class TestBootstrapError:
 
     def test_attributes_set(self) -> None:
         """Test that attributes are correctly set."""
-        error = BootstrapError(
-            reason="test", n_successful=25, n_required=50
-        )
+        error = BootstrapError(reason="test", n_successful=25, n_required=50)
         assert error.reason == "test"
         assert error.n_successful == 25
         assert error.n_required == 50

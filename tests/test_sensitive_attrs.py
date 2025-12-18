@@ -74,23 +74,27 @@ class TestSuggestSensitiveAttributes:
     @pytest.fixture
     def sample_df(self) -> pl.DataFrame:
         """Create sample DataFrame with common columns."""
-        return pl.DataFrame({
-            "patient_id": [1, 2, 3, 4, 5],
-            "race": ["White", "Black", "Hispanic", "White", "Asian"],
-            "sex": ["Male", "Female", "Male", "Female", "Male"],
-            "age_group": ["18-30", "31-45", "46-60", "61-75", "75+"],
-            "y_true": [0, 1, 0, 1, 0],
-            "y_prob": [0.2, 0.8, 0.3, 0.7, 0.4],
-        })
+        return pl.DataFrame(
+            {
+                "patient_id": [1, 2, 3, 4, 5],
+                "race": ["White", "Black", "Hispanic", "White", "Asian"],
+                "sex": ["Male", "Female", "Male", "Female", "Male"],
+                "age_group": ["18-30", "31-45", "46-60", "61-75", "75+"],
+                "y_true": [0, 1, 0, 1, 0],
+                "y_prob": [0.2, 0.8, 0.3, 0.7, 0.4],
+            }
+        )
 
     @pytest.fixture
     def df_with_insurance(self) -> pl.DataFrame:
         """Create DataFrame with insurance column."""
-        return pl.DataFrame({
-            "patient_id": [1, 2, 3],
-            "insurance": ["Commercial", "Medicaid", "Medicare"],
-            "y_true": [0, 1, 0],
-        })
+        return pl.DataFrame(
+            {
+                "patient_id": [1, 2, 3],
+                "insurance": ["Commercial", "Medicaid", "Medicare"],
+                "y_true": [0, 1, 0],
+            }
+        )
 
     def test_returns_list(self, sample_df: pl.DataFrame) -> None:
         """Test that function returns a list."""
@@ -158,20 +162,24 @@ class TestSuggestSensitiveAttributes:
 
     def test_no_suggestions_for_unrelated_columns(self) -> None:
         """Test that unrelated columns are not suggested."""
-        df = pl.DataFrame({
-            "patient_id": [1, 2, 3],
-            "lab_value": [1.5, 2.3, 3.1],
-            "diagnosis": ["A", "B", "C"],
-        })
+        df = pl.DataFrame(
+            {
+                "patient_id": [1, 2, 3],
+                "lab_value": [1.5, 2.3, 3.1],
+                "diagnosis": ["A", "B", "C"],
+            }
+        )
         result = suggest_sensitive_attributes(df)
         assert len(result) == 0
 
     def test_case_insensitive_matching(self) -> None:
         """Test that column matching is case-insensitive."""
-        df = pl.DataFrame({
-            "RACE": ["White", "Black"],
-            "SEX": ["Male", "Female"],
-        })
+        df = pl.DataFrame(
+            {
+                "RACE": ["White", "Black"],
+                "SEX": ["Male", "Female"],
+            }
+        )
         result = suggest_sensitive_attributes(df)
         names = [s["suggested_name"] for s in result]
         assert "race" in names
@@ -179,26 +187,32 @@ class TestSuggestSensitiveAttributes:
 
     def test_preserves_actual_column_name(self) -> None:
         """Test that actual column name is preserved."""
-        df = pl.DataFrame({
-            "RACE": ["White", "Black"],
-        })
+        df = pl.DataFrame(
+            {
+                "RACE": ["White", "Black"],
+            }
+        )
         result = suggest_sensitive_attributes(df)
         assert result[0]["detected_column"] == "RACE"
 
     def test_handles_missing_values(self) -> None:
         """Test handling of columns with missing values."""
-        df = pl.DataFrame({
-            "race": ["White", None, "Black", None, "Hispanic"],
-        })
+        df = pl.DataFrame(
+            {
+                "race": ["White", None, "Black", None, "Hispanic"],
+            }
+        )
         result = suggest_sensitive_attributes(df)
         assert result[0]["missing_rate"] == pytest.approx(0.4, rel=0.01)
 
     def test_alternative_patterns_matched(self) -> None:
         """Test that alternative column patterns are matched."""
-        df = pl.DataFrame({
-            "patient_race": ["White", "Black"],
-            "patient_sex": ["Male", "Female"],
-        })
+        df = pl.DataFrame(
+            {
+                "patient_race": ["White", "Black"],
+                "patient_sex": ["Male", "Female"],
+            }
+        )
         result = suggest_sensitive_attributes(df)
         names = [s["suggested_name"] for s in result]
         assert "race" in names
@@ -307,11 +321,13 @@ class TestValidateAttribute:
     @pytest.fixture
     def sample_df(self) -> pl.DataFrame:
         """Create sample DataFrame for validation."""
-        return pl.DataFrame({
-            "race": ["White"] * 200 + ["Black"] * 150 + ["Hispanic"] * 50 + [None] * 10,
-            "sex": ["Male", "Female"] * 205,
-            "small_group": ["A"] * 400 + ["B"] * 5 + ["C"] * 5,
-        })
+        return pl.DataFrame(
+            {
+                "race": ["White"] * 200 + ["Black"] * 150 + ["Hispanic"] * 50 + [None] * 10,
+                "sex": ["Male", "Female"] * 205,
+                "small_group": ["A"] * 400 + ["B"] * 5 + ["C"] * 5,
+            }
+        )
 
     def test_returns_list(self, sample_df: pl.DataFrame) -> None:
         """Test that function returns a list."""
@@ -348,9 +364,11 @@ class TestValidateAttribute:
 
     def test_high_missing_rate_warning(self) -> None:
         """Test warning for high missing rate."""
-        df = pl.DataFrame({
-            "race": ["White"] * 50 + [None] * 50,
-        })
+        df = pl.DataFrame(
+            {
+                "race": ["White"] * 50 + [None] * 50,
+            }
+        )
         result = validate_attribute(df, "race", "race")
         issues = [i for i in result if "missing rate" in i.lower()]
         assert len(issues) == 1
@@ -375,10 +393,12 @@ class TestGetReferenceGroup:
     @pytest.fixture
     def sample_df(self) -> pl.DataFrame:
         """Create sample DataFrame for reference group tests."""
-        return pl.DataFrame({
-            "race": ["White"] * 200 + ["Black"] * 150 + ["Hispanic"] * 50,
-            "sex": ["Male"] * 200 + ["Female"] * 200,
-        })
+        return pl.DataFrame(
+            {
+                "race": ["White"] * 200 + ["Black"] * 150 + ["Hispanic"] * 50,
+                "sex": ["Male"] * 200 + ["Female"] * 200,
+            }
+        )
 
     def test_returns_string(self, sample_df: pl.DataFrame) -> None:
         """Test that function returns a string."""
@@ -407,16 +427,20 @@ class TestGetReferenceGroup:
 
     def test_empty_column_raises(self) -> None:
         """Test that empty column raises ValueError."""
-        df = pl.DataFrame({
-            "race": pl.Series([], dtype=pl.Utf8),
-        })
+        df = pl.DataFrame(
+            {
+                "race": pl.Series([], dtype=pl.Utf8),
+            }
+        )
         with pytest.raises(ValueError, match="has no data"):
             get_reference_group(df, "race")
 
     def test_handles_null_values(self) -> None:
         """Test that null values are handled correctly."""
-        df = pl.DataFrame({
-            "race": ["White"] * 100 + ["Black"] * 50 + [None] * 50,
-        })
+        df = pl.DataFrame(
+            {
+                "race": ["White"] * 100 + ["Black"] * 50 + [None] * 50,
+            }
+        )
         result = get_reference_group(df, "race")
         assert result == "White"

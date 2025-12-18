@@ -176,9 +176,7 @@ PROB_CLIP_MAX: Final[float] = 1 - 1e-7
 # - USE_WITH_CAUTION: Improper measures (Table 2 "Inadvisable")
 
 # Discrimination metrics
-VANCALSTER_RECOMMENDED_DISCRIMINATION: Final[tuple[str, ...]] = (
-    "auroc",
-)
+VANCALSTER_RECOMMENDED_DISCRIMINATION: Final[tuple[str, ...]] = ("auroc",)
 """Van Calster RECOMMENDED: AUROC is the key discrimination measure."""
 
 VANCALSTER_OPTIONAL_DISCRIMINATION: Final[tuple[str, ...]] = (
@@ -218,9 +216,7 @@ VANCALSTER_RECOMMENDED_CLINICAL_UTILITY: Final[tuple[str, ...]] = (
 )
 """Van Calster RECOMMENDED: Essential for clinical decision support."""
 
-VANCALSTER_OPTIONAL_CLINICAL_UTILITY: Final[tuple[str, ...]] = (
-    "expected_cost",
-)
+VANCALSTER_OPTIONAL_CLINICAL_UTILITY: Final[tuple[str, ...]] = ("expected_cost",)
 """Van Calster OPTIONAL: Alternative to net benefit."""
 
 # Overall performance metrics

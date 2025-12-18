@@ -15,6 +15,7 @@ FairCareAI is a Python package for auditing machine learning models for fairness
 - [Key Features](#key-features)
 - [Governance Philosophy](#governance-philosophy)
 - [Installation](#installation)
+- [Data Preparation Guide](#data-preparation-guide)
 - [Quick Start](#quick-start)
 - [Output Personas](#output-personas)
 - [Data Requirements](#data-requirements)
@@ -89,26 +90,176 @@ See `pyproject.toml` for complete dependencies.
 
 ---
 
+## Data Preparation Guide
+
+Before using FairCareAI, prepare a dataset with your model's predictions. This section covers what data scientists need to bring and common preparation steps.
+
+### What You Need to Bring
+
+| Required | Column | Type | Description |
+|----------|--------|------|-------------|
+| Yes | **Predictions** | float [0.0, 1.0] | Model-generated risk probabilities |
+| Yes | **Outcomes** | int (0 or 1) | Actual binary outcomes |
+| Recommended | **Sensitive Attributes** | string/categorical | Demographics (auto-detected or custom) |
+
+### Supported File Formats
+
+FairCareAI accepts multiple input formats:
+
+| Format | Extension | Example |
+|--------|-----------|---------|
+| **Parquet** | `.parquet` | `FairCareAudit(data="predictions.parquet", ...)` |
+| **CSV** | `.csv` | `FairCareAudit(data="data.csv", ...)` |
+| **Polars DataFrame** | - | `FairCareAudit(data=pl_df, ...)` |
+| **Pandas DataFrame** | - | `FairCareAudit(data=pd_df, ...)` |
+
+### Prediction Column Requirements
+
+Your **prediction column** must contain:
+- **Probabilities** in range [0.0, 1.0] (NOT logits, NOT raw scores)
+- One value per patient/observation
+
+```python
+# Correct: Probabilities from model.predict_proba()
+y_prob = model.predict_proba(X_test)[:, 1]  # Second column for positive class
+
+# Wrong: Logits (unbounded values)
+logits = model.decision_function(X_test)  # Must convert to probabilities first
+
+# Wrong: Binary predictions
+y_pred = model.predict(X_test)  # Use predict_proba(), not predict()
+```
+
+### Outcome Column Requirements
+
+Your **outcome/target column** must contain:
+- **Binary values**: exactly 0 or 1
+- 1 = event occurred (e.g., readmission, mortality)
+- 0 = event did not occur
+
+### CSV File Format
+
+For CSV files, ensure:
+- **Header row required** with column names
+- **UTF-8 encoding** (standard)
+- **Comma-delimited** (standard CSV)
+- No special quoting needed for most data
+
+```csv
+patient_id,risk_score,readmit_30d,race,sex,insurance
+P001,0.72,1,White,Female,Medicare
+P002,0.31,0,Black,Male,Medicaid
+P003,0.85,1,Hispanic,Female,Commercial
+```
+
+### Parquet Files (Recommended for Large Datasets)
+
+Parquet is recommended for:
+- Datasets > 100,000 rows
+- Faster loading times
+- Smaller file sizes
+- Better type preservation
+
+```python
+# Save your predictions as Parquet
+import polars as pl
+
+df = pl.DataFrame({
+    "risk_score": y_prob,
+    "outcome": y_test,
+    "race": race_values,
+    "sex": sex_values,
+})
+df.write_parquet("predictions.parquet")
+```
+
+### Common Data Preparation Mistakes
+
+| Mistake | Problem | Solution |
+|---------|---------|----------|
+| Using logits instead of probabilities | Values outside [0,1] | Apply sigmoid: `1 / (1 + np.exp(-logits))` |
+| Using `model.predict()` | Returns 0/1, not probabilities | Use `model.predict_proba()[:, 1]` |
+| Missing values in predictions | Audit will fail | Impute or remove rows with NaN |
+| Outcome not binary | Validation error | Ensure values are exactly 0 or 1 |
+| Predictions on training data | Overfitting bias | Use held-out test set predictions |
+
+### Pre-Audit Checklist
+
+Before running FairCareAI, ensure you have:
+
+- [ ] **Model predictions** as probabilities [0.0, 1.0]
+- [ ] **Actual outcomes** as binary (0 or 1)
+- [ ] **Held-out test set** (not training data)
+- [ ] **Sensitive attribute columns** (race, sex, age_group, etc.)
+- [ ] **Clinical context** (threshold, use case type)
+
+### Minimum Viable Dataset
+
+```python
+# Minimum required columns
+required_columns = {
+    "prediction_column": "risk_score",   # Probabilities [0, 1]
+    "outcome_column": "readmit_30d",     # Binary 0/1
+}
+
+# Recommended: At least one sensitive attribute
+recommended_columns = {
+    "race": ["White", "Black", "Hispanic", "Asian", "Other"],
+    "sex": ["Male", "Female"],
+}
+```
+
+---
+
 ## Quick Start
+
+### Step 1: Load Your Data
+
+FairCareAI accepts multiple input formats. Choose the one that fits your workflow:
 
 ```python
 from faircareai import FairCareAudit, FairnessConfig
 from faircareai.core.config import FairnessMetric, UseCaseType
 
-# Load your model predictions
+# Option A: Parquet file (recommended for large datasets)
 audit = FairCareAudit(
-    data="predictions.parquet",  # or DataFrame
-    pred_col="risk_score",       # column with model probabilities
-    target_col="readmit_30d"     # column with actual outcomes (0/1)
+    data="predictions.parquet",
+    pred_col="risk_score",
+    target_col="readmit_30d"
 )
 
+# Option B: CSV file
+audit = FairCareAudit(
+    data="patient_predictions.csv",
+    pred_col="risk_score",
+    target_col="readmit_30d"
+)
+
+# Option C: Polars DataFrame
+import polars as pl
+df = pl.read_csv("data.csv")
+audit = FairCareAudit(data=df, pred_col="risk_score", target_col="readmit_30d")
+
+# Option D: Pandas DataFrame
+import pandas as pd
+df = pd.read_csv("data.csv")
+audit = FairCareAudit(data=df, pred_col="risk_score", target_col="readmit_30d")
+```
+
+### Step 2: Configure Sensitive Attributes
+
+```python
 # See suggested sensitive attributes
 audit.suggest_attributes()
 # Output: Detected race_ethnicity, sex, insurance columns...
 
 # Accept suggestions (1-indexed)
 audit.accept_suggested_attributes([1, 2, 3])
+```
 
+### Step 3: Set Fairness Configuration
+
+```python
 # Get fairness metric recommendation based on use case
 audit.config.use_case_type = UseCaseType.INTERVENTION_TRIGGER
 recommendation = audit.suggest_fairness_metric()
@@ -128,7 +279,11 @@ audit.config = FairnessConfig(
     ),
     use_case_type=UseCaseType.INTERVENTION_TRIGGER,
 )
+```
 
+### Step 4: Run Audit and Export Reports
+
+```python
 # Run the audit
 results = audit.run()
 
@@ -675,7 +830,41 @@ config = FairnessConfig(
 
 ## Interactive Dashboard
 
-Launch the Streamlit dashboard for interactive analysis:
+### Command-Line Interface (CLI)
+
+FairCareAI provides a CLI for running audits directly from the terminal:
+
+```bash
+# Audit a Parquet file (recommended for large datasets)
+faircareai audit predictions.parquet -p risk_score -t outcome -o report.html
+
+# Audit a CSV file
+faircareai audit patient_data.csv -p risk_score -t readmit_30d -a race -a sex
+
+# Specify output format explicitly
+faircareai audit data.parquet -p prob -t label --format html --output fairness_report.html
+
+# Generate governance PDF report
+faircareai audit data.csv -p risk_score -t outcome --persona governance --format pdf -o governance.pdf
+
+# Run with custom threshold
+faircareai audit predictions.parquet -p risk_score -t outcome --threshold 0.3
+```
+
+**CLI Options**:
+| Option | Description | Example |
+|--------|-------------|---------|
+| `-p`, `--pred-col` | Prediction column name | `-p risk_score` |
+| `-t`, `--target-col` | Target/outcome column name | `-t readmit_30d` |
+| `-a`, `--attribute` | Sensitive attribute (repeatable) | `-a race -a sex` |
+| `-o`, `--output` | Output file path | `-o report.html` |
+| `--format` | Output format (html, pdf, json) | `--format pdf` |
+| `--persona` | Output persona (data_scientist, governance) | `--persona governance` |
+| `--threshold` | Decision threshold (0-1) | `--threshold 0.3` |
+
+### Streamlit Dashboard
+
+Launch the interactive Streamlit dashboard for visual analysis:
 
 ```python
 import faircareai

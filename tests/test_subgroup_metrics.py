@@ -39,13 +39,16 @@ class TestComputeSubgroupMetrics:
         y_true = np.random.binomial(1, 0.3, n)
         y_prob = np.clip(
             np.where(y_true == 1, np.random.normal(0.6, 0.2, n), np.random.normal(0.3, 0.2, n)),
-            0.01, 0.99
+            0.01,
+            0.99,
         )
-        return pl.DataFrame({
-            "group": groups,
-            "y_true": y_true,
-            "y_prob": y_prob,
-        })
+        return pl.DataFrame(
+            {
+                "group": groups,
+                "y_true": y_true,
+                "y_prob": y_prob,
+            }
+        )
 
     def test_returns_dict(self, sample_df: pl.DataFrame) -> None:
         """Test that function returns a dictionary."""
@@ -118,27 +121,27 @@ class TestComputeSubgroupMetrics:
 
     def test_small_sample_warning(self) -> None:
         """Test small sample warning is set."""
-        df = pl.DataFrame({
-            "group": ["A"] * 50 + ["B"] * 50,
-            "y_true": [0, 1] * 50,
-            "y_prob": [0.3, 0.7] * 50,
-        })
-        result = compute_subgroup_metrics(
-            df, "y_prob", "y_true", "group", bootstrap_ci=False
+        df = pl.DataFrame(
+            {
+                "group": ["A"] * 50 + ["B"] * 50,
+                "y_true": [0, 1] * 50,
+                "y_prob": [0.3, 0.7] * 50,
+            }
         )
+        result = compute_subgroup_metrics(df, "y_prob", "y_true", "group", bootstrap_ci=False)
         # n=50 should trigger small sample warning
         assert result["groups"]["A"]["small_sample_warning"] is True
 
     def test_very_small_group_error(self) -> None:
         """Test that very small groups get error."""
-        df = pl.DataFrame({
-            "group": ["A"] * 100 + ["B"] * 5,  # B has only 5
-            "y_true": [0, 1] * 50 + [0, 1, 0, 1, 0],
-            "y_prob": [0.3, 0.7] * 50 + [0.3, 0.7, 0.3, 0.7, 0.3],
-        })
-        result = compute_subgroup_metrics(
-            df, "y_prob", "y_true", "group", bootstrap_ci=False
+        df = pl.DataFrame(
+            {
+                "group": ["A"] * 100 + ["B"] * 5,  # B has only 5
+                "y_true": [0, 1] * 50 + [0, 1, 0, 1, 0],
+                "y_prob": [0.3, 0.7] * 50 + [0.3, 0.7, 0.3, 0.7, 0.3],
+            }
         )
+        result = compute_subgroup_metrics(df, "y_prob", "y_true", "group", bootstrap_ci=False)
         assert "error" in result["groups"]["B"]
 
     def test_contains_disparities(self, sample_df: pl.DataFrame) -> None:
@@ -151,13 +154,10 @@ class TestComputeSubgroupMetrics:
     def test_bootstrap_ci_computed(self, sample_df: pl.DataFrame) -> None:
         """Test that bootstrap CI is computed when requested."""
         result = compute_subgroup_metrics(
-            sample_df, "y_prob", "y_true", "group",
-            bootstrap_ci=True, n_bootstrap=50
+            sample_df, "y_prob", "y_true", "group", bootstrap_ci=True, n_bootstrap=50
         )
         # At least one group should have CI
-        has_ci = any(
-            "auroc_ci_95" in g for g in result["groups"].values() if "error" not in g
-        )
+        has_ci = any("auroc_ci_95" in g for g in result["groups"].values() if "error" not in g)
         assert has_ci
 
 
@@ -272,36 +272,36 @@ class TestComputeIntersectional:
         y_true = np.random.binomial(1, 0.3, n)
         y_prob = np.clip(
             np.where(y_true == 1, np.random.normal(0.6, 0.2, n), np.random.normal(0.3, 0.2, n)),
-            0.01, 0.99
+            0.01,
+            0.99,
         )
-        return pl.DataFrame({
-            "race": race,
-            "sex": sex,
-            "y_true": y_true,
-            "y_prob": y_prob,
-        })
+        return pl.DataFrame(
+            {
+                "race": race,
+                "sex": sex,
+                "y_true": y_true,
+                "y_prob": y_prob,
+            }
+        )
 
     def test_returns_dict(self, intersectional_df: pl.DataFrame) -> None:
         """Test that function returns a dictionary."""
         result = compute_intersectional(
-            intersectional_df, "y_prob", "y_true", ["race", "sex"],
-            bootstrap_ci=False
+            intersectional_df, "y_prob", "y_true", ["race", "sex"], bootstrap_ci=False
         )
         assert isinstance(result, dict)
 
     def test_contains_attributes(self, intersectional_df: pl.DataFrame) -> None:
         """Test that result contains attributes list."""
         result = compute_intersectional(
-            intersectional_df, "y_prob", "y_true", ["race", "sex"],
-            bootstrap_ci=False
+            intersectional_df, "y_prob", "y_true", ["race", "sex"], bootstrap_ci=False
         )
         assert result["attributes"] == ["race", "sex"]
 
     def test_contains_intersections(self, intersectional_df: pl.DataFrame) -> None:
         """Test that result contains intersections."""
         result = compute_intersectional(
-            intersectional_df, "y_prob", "y_true", ["race", "sex"],
-            min_n=10, bootstrap_ci=False
+            intersectional_df, "y_prob", "y_true", ["race", "sex"], min_n=10, bootstrap_ci=False
         )
         assert "intersections" in result
         # Should have 4 intersections: White x M, White x F, Black x M, Black x F
@@ -310,8 +310,7 @@ class TestComputeIntersectional:
     def test_intersection_names_format(self, intersectional_df: pl.DataFrame) -> None:
         """Test that intersection names use ' x ' separator."""
         result = compute_intersectional(
-            intersectional_df, "y_prob", "y_true", ["race", "sex"],
-            min_n=10, bootstrap_ci=False
+            intersectional_df, "y_prob", "y_true", ["race", "sex"], min_n=10, bootstrap_ci=False
         )
         for name in result["intersections"].keys():
             assert " x " in name
@@ -319,20 +318,17 @@ class TestComputeIntersectional:
     def test_contains_summary(self, intersectional_df: pl.DataFrame) -> None:
         """Test that result contains summary."""
         result = compute_intersectional(
-            intersectional_df, "y_prob", "y_true", ["race", "sex"],
-            min_n=10, bootstrap_ci=False
+            intersectional_df, "y_prob", "y_true", ["race", "sex"], min_n=10, bootstrap_ci=False
         )
         assert "summary" in result
 
     def test_min_n_filtering(self, intersectional_df: pl.DataFrame) -> None:
         """Test that min_n filters small groups."""
         result_high = compute_intersectional(
-            intersectional_df, "y_prob", "y_true", ["race", "sex"],
-            min_n=200, bootstrap_ci=False
+            intersectional_df, "y_prob", "y_true", ["race", "sex"], min_n=200, bootstrap_ci=False
         )
         result_low = compute_intersectional(
-            intersectional_df, "y_prob", "y_true", ["race", "sex"],
-            min_n=10, bootstrap_ci=False
+            intersectional_df, "y_prob", "y_true", ["race", "sex"], min_n=10, bootstrap_ci=False
         )
         # Higher min_n should result in fewer intersections
         assert len(result_high["intersections"]) <= len(result_low["intersections"])
@@ -340,8 +336,7 @@ class TestComputeIntersectional:
     def test_summary_contains_best_worst(self, intersectional_df: pl.DataFrame) -> None:
         """Test that summary contains best/worst performing groups."""
         result = compute_intersectional(
-            intersectional_df, "y_prob", "y_true", ["race", "sex"],
-            min_n=10, bootstrap_ci=False
+            intersectional_df, "y_prob", "y_true", ["race", "sex"], min_n=10, bootstrap_ci=False
         )
         summary = result["summary"]
         if "best_performing" in summary:
@@ -363,15 +358,18 @@ class TestComputePairwiseIntersectional:
         y_true = np.random.binomial(1, 0.3, n)
         y_prob = np.clip(
             np.where(y_true == 1, np.random.normal(0.6, 0.2, n), np.random.normal(0.3, 0.2, n)),
-            0.01, 0.99
+            0.01,
+            0.99,
         )
-        return pl.DataFrame({
-            "race": race,
-            "sex": sex,
-            "age_group": age,
-            "y_true": y_true,
-            "y_prob": y_prob,
-        })
+        return pl.DataFrame(
+            {
+                "race": race,
+                "sex": sex,
+                "age_group": age,
+                "y_true": y_true,
+                "y_prob": y_prob,
+            }
+        )
 
     def test_returns_dict(self, three_attr_df: pl.DataFrame) -> None:
         """Test that function returns a dictionary."""
@@ -380,9 +378,7 @@ class TestComputePairwiseIntersectional:
             "sex": {"column": "sex"},
             "age": {"column": "age_group"},
         }
-        result = compute_pairwise_intersectional(
-            three_attr_df, "y_prob", "y_true", attrs, min_n=10
-        )
+        result = compute_pairwise_intersectional(three_attr_df, "y_prob", "y_true", attrs, min_n=10)
         assert isinstance(result, dict)
 
     def test_contains_all_pairs(self, three_attr_df: pl.DataFrame) -> None:
@@ -392,9 +388,7 @@ class TestComputePairwiseIntersectional:
             "sex": {"column": "sex"},
             "age": {"column": "age_group"},
         }
-        result = compute_pairwise_intersectional(
-            three_attr_df, "y_prob", "y_true", attrs, min_n=10
-        )
+        result = compute_pairwise_intersectional(three_attr_df, "y_prob", "y_true", attrs, min_n=10)
         # 3 attributes = 3 pairs
         assert len(result["pairs"]) == 3
 
@@ -404,9 +398,7 @@ class TestComputePairwiseIntersectional:
             "race": {"column": "race"},
             "sex": {"column": "sex"},
         }
-        result = compute_pairwise_intersectional(
-            three_attr_df, "y_prob", "y_true", attrs, min_n=10
-        )
+        result = compute_pairwise_intersectional(three_attr_df, "y_prob", "y_true", attrs, min_n=10)
         assert "summary" in result
         assert "n_pairs_analyzed" in result["summary"]
 
@@ -427,42 +419,36 @@ class TestIdentifyVulnerableSubgroups:
         # High perf: good separation, Low perf: poor separation
         y_prob = np.zeros(n)
         y_prob[:200] = np.where(
-            y_true[:200] == 1,
-            np.random.uniform(0.6, 0.9, 200),
-            np.random.uniform(0.1, 0.4, 200)
+            y_true[:200] == 1, np.random.uniform(0.6, 0.9, 200), np.random.uniform(0.1, 0.4, 200)
         )
         y_prob[200:400] = np.where(
             y_true[200:400] == 1,
             np.random.uniform(0.4, 0.6, 200),  # Poor separation
-            np.random.uniform(0.4, 0.6, 200)
+            np.random.uniform(0.4, 0.6, 200),
         )
         y_prob[400:] = np.where(
-            y_true[400:] == 1,
-            np.random.uniform(0.5, 0.8, 100),
-            np.random.uniform(0.2, 0.5, 100)
+            y_true[400:] == 1, np.random.uniform(0.5, 0.8, 100), np.random.uniform(0.2, 0.5, 100)
         )
         y_prob = np.clip(y_prob, 0.01, 0.99)
 
-        return pl.DataFrame({
-            "group": group,
-            "y_true": y_true,
-            "y_prob": y_prob,
-        })
+        return pl.DataFrame(
+            {
+                "group": group,
+                "y_true": y_true,
+                "y_prob": y_prob,
+            }
+        )
 
     def test_returns_dict(self, vulnerability_df: pl.DataFrame) -> None:
         """Test that function returns a dictionary."""
         attrs = {"group": {"column": "group"}}
-        result = identify_vulnerable_subgroups(
-            vulnerability_df, "y_prob", "y_true", attrs
-        )
+        result = identify_vulnerable_subgroups(vulnerability_df, "y_prob", "y_true", attrs)
         assert isinstance(result, dict)
 
     def test_contains_vulnerable_list(self, vulnerability_df: pl.DataFrame) -> None:
         """Test that result contains vulnerable subgroups list."""
         attrs = {"group": {"column": "group"}}
-        result = identify_vulnerable_subgroups(
-            vulnerability_df, "y_prob", "y_true", attrs
-        )
+        result = identify_vulnerable_subgroups(vulnerability_df, "y_prob", "y_true", attrs)
         assert "vulnerable_subgroups" in result
         assert isinstance(result["vulnerable_subgroups"], list)
 
@@ -470,8 +456,11 @@ class TestIdentifyVulnerableSubgroups:
         """Test that groups with low AUROC are identified."""
         attrs = {"group": {"column": "group"}}
         result = identify_vulnerable_subgroups(
-            vulnerability_df, "y_prob", "y_true", attrs,
-            auroc_threshold=0.75  # Should catch LowPerf group
+            vulnerability_df,
+            "y_prob",
+            "y_true",
+            attrs,
+            auroc_threshold=0.75,  # Should catch LowPerf group
         )
         # Should identify at least one vulnerable group
         # (LowPerf has poor separation)
@@ -483,12 +472,18 @@ class TestIdentifyVulnerableSubgroups:
         """Test that auroc_threshold affects results."""
         attrs = {"group": {"column": "group"}}
         result_strict = identify_vulnerable_subgroups(
-            vulnerability_df, "y_prob", "y_true", attrs,
-            auroc_threshold=0.9  # Very strict
+            vulnerability_df,
+            "y_prob",
+            "y_true",
+            attrs,
+            auroc_threshold=0.9,  # Very strict
         )
         result_lenient = identify_vulnerable_subgroups(
-            vulnerability_df, "y_prob", "y_true", attrs,
-            auroc_threshold=0.5  # Very lenient
+            vulnerability_df,
+            "y_prob",
+            "y_true",
+            attrs,
+            auroc_threshold=0.5,  # Very lenient
         )
         # Stricter threshold should find more vulnerable groups
         assert result_strict["n_vulnerable"] >= result_lenient["n_vulnerable"]
@@ -496,9 +491,7 @@ class TestIdentifyVulnerableSubgroups:
     def test_contains_summary(self, vulnerability_df: pl.DataFrame) -> None:
         """Test that result contains summary."""
         attrs = {"group": {"column": "group"}}
-        result = identify_vulnerable_subgroups(
-            vulnerability_df, "y_prob", "y_true", attrs
-        )
+        result = identify_vulnerable_subgroups(vulnerability_df, "y_prob", "y_true", attrs)
         assert "summary" in result
 
 

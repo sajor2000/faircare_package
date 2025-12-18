@@ -34,27 +34,23 @@ class TestComputeCohortSummary:
         """Create sample DataFrame for testing."""
         np.random.seed(42)
         n = 200
-        return pl.DataFrame({
-            "y_true": np.random.binomial(1, 0.3, n),
-            "y_prob": np.clip(np.random.uniform(0.1, 0.9, n), 0.01, 0.99),
-            "race": np.random.choice(["White", "Black", "Hispanic"], n, p=[0.5, 0.3, 0.2]),
-            "sex": np.random.choice(["M", "F"], n, p=[0.5, 0.5]),
-        })
+        return pl.DataFrame(
+            {
+                "y_true": np.random.binomial(1, 0.3, n),
+                "y_prob": np.clip(np.random.uniform(0.1, 0.9, n), 0.01, 0.99),
+                "race": np.random.choice(["White", "Black", "Hispanic"], n, p=[0.5, 0.3, 0.2]),
+                "sex": np.random.choice(["M", "F"], n, p=[0.5, 0.5]),
+            }
+        )
 
     def test_returns_dict(self, sample_df: pl.DataFrame) -> None:
         """Test that function returns a dictionary."""
-        result = compute_cohort_summary(
-            sample_df, "y_true", "y_prob",
-            {"race": {"column": "race"}}
-        )
+        result = compute_cohort_summary(sample_df, "y_true", "y_prob", {"race": {"column": "race"}})
         assert isinstance(result, dict)
 
     def test_contains_cohort_overview(self, sample_df: pl.DataFrame) -> None:
         """Test that result contains cohort overview."""
-        result = compute_cohort_summary(
-            sample_df, "y_true", "y_prob",
-            {"race": {"column": "race"}}
-        )
+        result = compute_cohort_summary(sample_df, "y_true", "y_prob", {"race": {"column": "race"}})
         assert "cohort_overview" in result
         overview = result["cohort_overview"]
         assert "n_total" in overview
@@ -63,10 +59,7 @@ class TestComputeCohortSummary:
 
     def test_cohort_overview_values(self, sample_df: pl.DataFrame) -> None:
         """Test cohort overview values are correct."""
-        result = compute_cohort_summary(
-            sample_df, "y_true", "y_prob",
-            {"race": {"column": "race"}}
-        )
+        result = compute_cohort_summary(sample_df, "y_true", "y_prob", {"race": {"column": "race"}})
         overview = result["cohort_overview"]
         assert overview["n_total"] == 200
         assert overview["n_positive"] + overview["n_negative"] == 200
@@ -74,10 +67,7 @@ class TestComputeCohortSummary:
 
     def test_contains_prediction_distribution(self, sample_df: pl.DataFrame) -> None:
         """Test that result contains prediction distribution."""
-        result = compute_cohort_summary(
-            sample_df, "y_true", "y_prob",
-            {"race": {"column": "race"}}
-        )
+        result = compute_cohort_summary(sample_df, "y_true", "y_prob", {"race": {"column": "race"}})
         assert "prediction_distribution" in result
         pred = result["prediction_distribution"]
         assert "mean" in pred
@@ -87,8 +77,7 @@ class TestComputeCohortSummary:
     def test_contains_attribute_distributions(self, sample_df: pl.DataFrame) -> None:
         """Test that result contains attribute distributions."""
         result = compute_cohort_summary(
-            sample_df, "y_true", "y_prob",
-            {"race": {"column": "race"}, "sex": {"column": "sex"}}
+            sample_df, "y_true", "y_prob", {"race": {"column": "race"}, "sex": {"column": "sex"}}
         )
         assert "attribute_distributions" in result
         assert "race" in result["attribute_distributions"]
@@ -96,10 +85,7 @@ class TestComputeCohortSummary:
 
     def test_attribute_distribution_groups(self, sample_df: pl.DataFrame) -> None:
         """Test that attribute distributions contain groups."""
-        result = compute_cohort_summary(
-            sample_df, "y_true", "y_prob",
-            {"race": {"column": "race"}}
-        )
+        result = compute_cohort_summary(sample_df, "y_true", "y_prob", {"race": {"column": "race"}})
         attr_dist = result["attribute_distributions"]["race"]
         assert "groups" in attr_dist
         assert "White" in attr_dist["groups"]
@@ -107,18 +93,14 @@ class TestComputeCohortSummary:
 
     def test_contains_outcome_by_attribute(self, sample_df: pl.DataFrame) -> None:
         """Test that result contains outcome by attribute."""
-        result = compute_cohort_summary(
-            sample_df, "y_true", "y_prob",
-            {"race": {"column": "race"}}
-        )
+        result = compute_cohort_summary(sample_df, "y_true", "y_prob", {"race": {"column": "race"}})
         assert "outcome_by_attribute" in result
         assert "race" in result["outcome_by_attribute"]
 
     def test_outcome_contains_rate_info(self, sample_df: pl.DataFrame) -> None:
         """Test that outcome data contains rate information."""
         result = compute_cohort_summary(
-            sample_df, "y_true", "y_prob",
-            {"race": {"column": "race", "reference": "White"}}
+            sample_df, "y_true", "y_prob", {"race": {"column": "race", "reference": "White"}}
         )
         outcome = result["outcome_by_attribute"]["race"]["groups"]["White"]
         assert "outcome_rate" in outcome
@@ -128,8 +110,7 @@ class TestComputeCohortSummary:
     def test_reference_group_marked(self, sample_df: pl.DataFrame) -> None:
         """Test that reference group is marked correctly."""
         result = compute_cohort_summary(
-            sample_df, "y_true", "y_prob",
-            {"race": {"column": "race", "reference": "White"}}
+            sample_df, "y_true", "y_prob", {"race": {"column": "race", "reference": "White"}}
         )
         outcome = result["outcome_by_attribute"]["race"]["groups"]["White"]
         assert outcome["is_reference"] is True
@@ -137,8 +118,7 @@ class TestComputeCohortSummary:
     def test_rate_ratio_computed(self, sample_df: pl.DataFrame) -> None:
         """Test that rate ratio is computed vs reference."""
         result = compute_cohort_summary(
-            sample_df, "y_true", "y_prob",
-            {"race": {"column": "race", "reference": "White"}}
+            sample_df, "y_true", "y_prob", {"race": {"column": "race", "reference": "White"}}
         )
         # Reference should have rate_ratio of 1.0 or None
         white = result["outcome_by_attribute"]["race"]["groups"]["White"]
@@ -148,10 +128,7 @@ class TestComputeCohortSummary:
 
     def test_contains_prediction_by_attribute(self, sample_df: pl.DataFrame) -> None:
         """Test that result contains prediction by attribute."""
-        result = compute_cohort_summary(
-            sample_df, "y_true", "y_prob",
-            {"race": {"column": "race"}}
-        )
+        result = compute_cohort_summary(sample_df, "y_true", "y_prob", {"race": {"column": "race"}})
         assert "prediction_by_attribute" in result
         pred_by = result["prediction_by_attribute"]["race"]["groups"]["White"]
         assert "mean_prob" in pred_by
@@ -159,25 +136,23 @@ class TestComputeCohortSummary:
     def test_missing_column_skipped(self, sample_df: pl.DataFrame) -> None:
         """Test that missing columns are skipped."""
         result = compute_cohort_summary(
-            sample_df, "y_true", "y_prob",
-            {"missing_attr": {"column": "nonexistent"}}
+            sample_df, "y_true", "y_prob", {"missing_attr": {"column": "nonexistent"}}
         )
         # Should not raise and return valid result
         assert "attribute_distributions" in result
 
     def test_empty_dataframe(self) -> None:
         """Test handling of empty DataFrame raises error due to null type."""
-        df = pl.DataFrame({
-            "y_true": [],
-            "y_prob": [],
-            "group": [],
-        })
+        df = pl.DataFrame(
+            {
+                "y_true": [],
+                "y_prob": [],
+                "group": [],
+            }
+        )
         # Empty DataFrame creates null-typed columns which can't be summed
         with pytest.raises(Exception):
-            compute_cohort_summary(
-                df, "y_true", "y_prob",
-                {"group": {"column": "group"}}
-            )
+            compute_cohort_summary(df, "y_true", "y_prob", {"group": {"column": "group"}})
 
 
 class TestWilsonCI:
@@ -222,10 +197,12 @@ class TestComputeOutcomeRateStatistics:
     def stats_df(self) -> pl.DataFrame:
         """Create DataFrame for statistical tests."""
         np.random.seed(42)
-        return pl.DataFrame({
-            "y_true": [0] * 50 + [1] * 30 + [0] * 40 + [1] * 20 + [0] * 30 + [1] * 30,
-            "group": ["A"] * 80 + ["B"] * 60 + ["C"] * 60,
-        })
+        return pl.DataFrame(
+            {
+                "y_true": [0] * 50 + [1] * 30 + [0] * 40 + [1] * 20 + [0] * 30 + [1] * 30,
+                "group": ["A"] * 80 + ["B"] * 60 + ["C"] * 60,
+            }
+        )
 
     def test_returns_dict(self, stats_df: pl.DataFrame) -> None:
         """Test that function returns a dictionary."""
@@ -258,9 +235,7 @@ class TestComputeOutcomeRateStatistics:
 
     def test_pairwise_with_reference(self, stats_df: pl.DataFrame) -> None:
         """Test pairwise comparisons with reference group."""
-        result = compute_outcome_rate_statistics(
-            stats_df, "y_true", "group", reference="A"
-        )
+        result = compute_outcome_rate_statistics(stats_df, "y_true", "group", reference="A")
         assert "pairwise_vs_reference" in result
         pairwise = result["pairwise_vs_reference"]
         assert "B" in pairwise
@@ -268,9 +243,7 @@ class TestComputeOutcomeRateStatistics:
 
     def test_pairwise_contains_odds_ratio(self, stats_df: pl.DataFrame) -> None:
         """Test that pairwise results contain odds ratio."""
-        result = compute_outcome_rate_statistics(
-            stats_df, "y_true", "group", reference="A"
-        )
+        result = compute_outcome_rate_statistics(stats_df, "y_true", "group", reference="A")
         b_result = result["pairwise_vs_reference"]["B"]
         assert "odds_ratio" in b_result
         assert "p_value" in b_result
@@ -405,8 +378,18 @@ class TestGenerateTable1Dataframe:
             "outcome_by_attribute": {
                 "race": {
                     "groups": {
-                        "White": {"outcome_rate": 0.28, "rate_ratio": 1.0, "ci_95_low": 0.24, "ci_95_high": 0.32},
-                        "Black": {"outcome_rate": 0.35, "rate_ratio": 1.25, "ci_95_low": 0.30, "ci_95_high": 0.40},
+                        "White": {
+                            "outcome_rate": 0.28,
+                            "rate_ratio": 1.0,
+                            "ci_95_low": 0.24,
+                            "ci_95_high": 0.32,
+                        },
+                        "Black": {
+                            "outcome_rate": 0.35,
+                            "rate_ratio": 1.25,
+                            "ci_95_low": 0.30,
+                            "ci_95_high": 0.40,
+                        },
                     },
                 },
             },
@@ -445,10 +428,12 @@ class TestComputeContinuousVariableSummary:
     def continuous_df(self) -> pl.DataFrame:
         """Create DataFrame with continuous variable."""
         np.random.seed(42)
-        return pl.DataFrame({
-            "age": np.random.normal(50, 10, 200),
-            "group": ["A"] * 100 + ["B"] * 100,
-        })
+        return pl.DataFrame(
+            {
+                "age": np.random.normal(50, 10, 200),
+                "group": ["A"] * 100 + ["B"] * 100,
+            }
+        )
 
     def test_overall_summary(self, continuous_df: pl.DataFrame) -> None:
         """Test overall summary without grouping."""
@@ -460,18 +445,14 @@ class TestComputeContinuousVariableSummary:
 
     def test_grouped_summary(self, continuous_df: pl.DataFrame) -> None:
         """Test summary with grouping."""
-        result = compute_continuous_variable_summary(
-            continuous_df, "age", group_col="group"
-        )
+        result = compute_continuous_variable_summary(continuous_df, "age", group_col="group")
         assert "groups" in result
         assert "A" in result["groups"]
         assert "B" in result["groups"]
 
     def test_grouped_contains_stats(self, continuous_df: pl.DataFrame) -> None:
         """Test that grouped results contain statistics."""
-        result = compute_continuous_variable_summary(
-            continuous_df, "age", group_col="group"
-        )
+        result = compute_continuous_variable_summary(continuous_df, "age", group_col="group")
         group_a = result["groups"]["A"]
         assert "mean" in group_a
         assert "std" in group_a
@@ -481,17 +462,21 @@ class TestComputeContinuousVariableSummary:
 
     def test_handles_missing_values(self) -> None:
         """Test handling of missing values."""
-        df = pl.DataFrame({
-            "age": [30.0, None, 50.0, None, 70.0],
-        })
+        df = pl.DataFrame(
+            {
+                "age": [30.0, None, 50.0, None, 70.0],
+            }
+        )
         result = compute_continuous_variable_summary(df, "age")
         assert result["n"] == 3
         assert result["n_missing"] == 2
 
     def test_empty_column(self) -> None:
         """Test handling of empty column."""
-        df = pl.DataFrame({
-            "age": [None, None, None],
-        })
+        df = pl.DataFrame(
+            {
+                "age": [None, None, None],
+            }
+        )
         result = compute_continuous_variable_summary(df, "age")
         assert "error" in result

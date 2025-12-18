@@ -387,7 +387,10 @@ def create_forest_plot(
             font=dict(size=TYPOGRAPHY["body_size"], color=SEMANTIC_COLORS["text_secondary"]),
         )
         fig.update_layout(
-            title=dict(text=f"<b>{title or metric.upper()}</b>", font=dict(size=TYPOGRAPHY["subheading_size"])),
+            title=dict(
+                text=f"<b>{title or metric.upper()}</b>",
+                font=dict(size=TYPOGRAPHY["subheading_size"]),
+            ),
             template="faircareai",
             height=300,
         )
@@ -825,11 +828,21 @@ def create_metric_comparison_chart(
         # If label is same as key, it wasn't found - use fallback
         if label == key:
             fallback_labels = {
-                "tpr": "Sensitivity (TPR)" if persona == OutputPersona.DATA_SCIENTIST else "Detection Rate",
-                "fpr": "False Positive Rate" if persona == OutputPersona.DATA_SCIENTIST else "False Alarm Rate",
-                "ppv": "PPV" if persona == OutputPersona.DATA_SCIENTIST else "Positive Predictive Value",
-                "npv": "NPV" if persona == OutputPersona.DATA_SCIENTIST else "Negative Predictive Value",
-                "accuracy": "Accuracy" if persona == OutputPersona.DATA_SCIENTIST else "Correct Predictions",
+                "tpr": "Sensitivity (TPR)"
+                if persona == OutputPersona.DATA_SCIENTIST
+                else "Detection Rate",
+                "fpr": "False Positive Rate"
+                if persona == OutputPersona.DATA_SCIENTIST
+                else "False Alarm Rate",
+                "ppv": "PPV"
+                if persona == OutputPersona.DATA_SCIENTIST
+                else "Positive Predictive Value",
+                "npv": "NPV"
+                if persona == OutputPersona.DATA_SCIENTIST
+                else "Negative Predictive Value",
+                "accuracy": "Accuracy"
+                if persona == OutputPersona.DATA_SCIENTIST
+                else "Correct Predictions",
             }
             return fallback_labels.get(m, m.upper())
         return label
@@ -846,10 +859,7 @@ def create_metric_comparison_chart(
                     text=[f"{v:.0%}" for v in df[metric]],
                     textposition="outside",
                     textfont=dict(size=TYPOGRAPHY["tick_size"]),
-                    hovertemplate=(
-                        f"<b>%{{x}}</b><br>"
-                        f"{display_label}: %{{y:.1%}}<extra></extra>"
-                    ),
+                    hovertemplate=(f"<b>%{{x}}</b><br>{display_label}: %{{y:.1%}}<extra></extra>"),
                 )
             )
 
@@ -1737,7 +1747,12 @@ def create_fairness_radar(
 
     # Persona-aware metric labels
     if persona == OutputPersona.GOVERNANCE:
-        metric_labels = ["Detection Rate", "False Alarm Rate", "Positive Predictive Value", "Negative Predictive Value"]
+        metric_labels = [
+            "Detection Rate",
+            "False Alarm Rate",
+            "Positive Predictive Value",
+            "Negative Predictive Value",
+        ]
     else:
         metric_labels = ["Sensitivity", "FPR", "PPV", "NPV"]
 

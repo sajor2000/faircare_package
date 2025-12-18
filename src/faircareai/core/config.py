@@ -184,17 +184,17 @@ class MetricDisplayConfig:
 
 # OPTIONAL metrics in Van Calster preference order (most to least preferred)
 VANCALSTER_OPTIONAL_PRIORITY: list[str] = [
-    "brier_score",           # Overall performance (highest priority)
-    "scaled_brier",          # Overall performance
-    "oe_ratio",              # Calibration-in-the-large
-    "calibration_slope",     # Calibration parameter
-    "calibration_intercept", # Calibration parameter
-    "ici",                   # Integrated Calibration Index
-    "eci",                   # Expected Calibration Error
-    "sensitivity",           # Classification (must show with specificity)
-    "specificity",           # Classification (must show with sensitivity)
-    "ppv",                   # Predictive values (must show with NPV)
-    "npv",                   # Predictive values (must show with PPV)
+    "brier_score",  # Overall performance (highest priority)
+    "scaled_brier",  # Overall performance
+    "oe_ratio",  # Calibration-in-the-large
+    "calibration_slope",  # Calibration parameter
+    "calibration_intercept",  # Calibration parameter
+    "ici",  # Integrated Calibration Index
+    "eci",  # Expected Calibration Error
+    "sensitivity",  # Classification (must show with specificity)
+    "specificity",  # Classification (must show with sensitivity)
+    "ppv",  # Predictive values (must show with NPV)
+    "npv",  # Predictive values (must show with PPV)
 ]
 
 
@@ -227,6 +227,7 @@ def sort_metrics_by_priority(
 # =============================================================================
 # Persona-Tailored Terminology
 # =============================================================================
+
 
 @dataclass
 class MetricTerminology:

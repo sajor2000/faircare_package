@@ -130,35 +130,27 @@ class TestSummaryMethod:
         assert "10,000" in result
         assert "1,500" in result
 
-    def test_summary_contains_discrimination_metrics(
-        self, populated_results: AuditResults
-    ) -> None:
+    def test_summary_contains_discrimination_metrics(self, populated_results: AuditResults) -> None:
         """Test that summary contains discrimination metrics."""
         result = populated_results.summary()
         assert "AUROC" in result
         assert "0.852" in result
         assert "AUPRC" in result
 
-    def test_summary_contains_calibration_metrics(
-        self, populated_results: AuditResults
-    ) -> None:
+    def test_summary_contains_calibration_metrics(self, populated_results: AuditResults) -> None:
         """Test that summary contains calibration metrics."""
         result = populated_results.summary()
         assert "Brier Score" in result
         assert "Cal. Slope" in result
 
-    def test_summary_contains_classification_metrics(
-        self, populated_results: AuditResults
-    ) -> None:
+    def test_summary_contains_classification_metrics(self, populated_results: AuditResults) -> None:
         """Test that summary contains classification metrics."""
         result = populated_results.summary()
         assert "Sensitivity" in result
         assert "Specificity" in result
         assert "PPV" in result
 
-    def test_summary_contains_governance_counts(
-        self, populated_results: AuditResults
-    ) -> None:
+    def test_summary_contains_governance_counts(self, populated_results: AuditResults) -> None:
         """Test that summary contains governance counts."""
         result = populated_results.summary()
         assert "12" in result  # n_pass
@@ -244,9 +236,7 @@ class TestTable1Methods:
             config=config,
             descriptive_stats={
                 "cohort_overview": {"n_total": 1000, "n_positive": 100},
-                "attribute_distributions": {
-                    "race": {"White": 600, "Black": 400}
-                },
+                "attribute_distributions": {"race": {"White": 600, "Black": 400}},
             },
         )
 
@@ -383,9 +373,7 @@ class TestPlotCalibration:
 
         # Mock audit object
         mock_audit = MagicMock()
-        mock_audit.df = pl.DataFrame(
-            {"y_true": [0, 1], "y_prob": [0.3, 0.7], "race": ["A", "B"]}
-        )
+        mock_audit.df = pl.DataFrame({"y_true": [0, 1], "y_prob": [0.3, 0.7], "race": ["A", "B"]})
         mock_audit.y_prob_col = "y_prob"
         mock_audit.y_true_col = "y_true"
         results._audit = mock_audit
@@ -554,9 +542,7 @@ class TestToAuditSummary:
             config=config,
             descriptive_stats={"cohort_overview": {"n_total": 5000}},
             subgroup_performance={"race": {"groups": {"White": {}, "Black": {}}}},
-            fairness_metrics={
-                "race": {"equalized_odds_diff": {"White": 0.02, "Black": -0.08}}
-            },
+            fairness_metrics={"race": {"equalized_odds_diff": {"White": 0.02, "Black": -0.08}}},
             governance_recommendation={"n_pass": 8, "n_warnings": 2, "n_errors": 0},
         )
 
@@ -591,9 +577,7 @@ class TestToAuditSummary:
         )
         results = AuditResults(
             config=config,
-            fairness_metrics={
-                "race": {"equalized_odds_diff": {"White": None, "Black": 0.05}}
-            },
+            fairness_metrics={"race": {"equalized_odds_diff": {"White": None, "Black": 0.05}}},
             governance_recommendation={"n_pass": 0, "n_warnings": 0, "n_errors": 0},
         )
         with patch("faircareai.reports.generator.AuditSummary"):

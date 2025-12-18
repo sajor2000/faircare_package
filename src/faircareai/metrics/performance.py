@@ -364,9 +364,7 @@ def compute_classification_at_threshold(
 
     # Matthews Correlation Coefficient (MCC)
     # MCC = (TP*TN - FP*FN) / sqrt((TP+FP)(TP+FN)(TN+FP)(TN+FN))
-    mcc_denom = np.sqrt(
-        float((tp + fp) * (tp + fn) * (tn + fp) * (tn + fn))
-    )
+    mcc_denom = np.sqrt(float((tp + fp) * (tp + fn) * (tn + fp) * (tn + fn)))
     mcc = (tp * tn - fp * fn) / mcc_denom if mcc_denom > 0 else 0.0
 
     # DOR (Diagnostic Odds Ratio) per Van Calster
@@ -379,7 +377,11 @@ def compute_classification_at_threshold(
     # Kappa (Cohen's Kappa) per Van Calster
     # Kappa = (Accuracy - Accuracy_expected) / (1 - Accuracy_expected)
     prevalence = np.mean(y_true)
-    acc_expected = prevalence * ((tp + fp) / n_total) + (1 - prevalence) * ((fn + tn) / n_total) if n_total > 0 else 0
+    acc_expected = (
+        prevalence * ((tp + fp) / n_total) + (1 - prevalence) * ((fn + tn) / n_total)
+        if n_total > 0
+        else 0
+    )
     kappa = (accuracy - acc_expected) / (1 - acc_expected) if acc_expected < 1 else 0.0
 
     # Percentage flagged
