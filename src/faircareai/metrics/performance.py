@@ -33,6 +33,19 @@ See constants.py for VANCALSTER_* classification constants.
 from typing import Any
 
 import numpy as np
+
+from faircareai.core.bootstrap import (
+    bootstrap_confusion_metrics,
+    bootstrap_metric,
+    compute_percentile_ci,
+)
+from faircareai.core.types import (
+    CalibrationMetrics,
+    ClassificationMetrics,
+    DiscriminationMetrics,
+    OverallPerformance,
+)
+from faircareai.core.validation import safe_divide
 import polars as pl
 from sklearn.calibration import calibration_curve
 from sklearn.linear_model import LogisticRegression
@@ -66,7 +79,7 @@ def compute_overall_performance(
     thresholds_to_evaluate: list[float] | None = None,
     bootstrap_ci: bool = True,
     n_bootstrap: int = 1000,
-) -> dict[str, Any]:
+) -> OverallPerformance:
     """Compute comprehensive model performance metrics.
 
     Args:
@@ -128,7 +141,7 @@ def compute_discrimination_metrics(
     y_prob: np.ndarray,
     bootstrap_ci: bool = True,
     n_bootstrap: int = 1000,
-) -> dict[str, Any]:
+) -> DiscriminationMetrics:
     """Compute discrimination metrics with confidence intervals.
 
     Args:
@@ -168,37 +181,39 @@ def compute_discrimination_metrics(
         "prevalence": float(np.mean(y_true)),
     }
 
-    # Bootstrap confidence intervals
+    # Bootstrap confidence intervals using centralized bootstrap module
     if bootstrap_ci and len(y_true) > 10:
-        auroc_samples = []
-        auprc_samples = []
+        # AUROC bootstrap (stratified=False for backward compatibility)
+        auroc_samples, _ = bootstrap_metric(
+            y_true,
+            y_prob,
+            lambda yt, yp: roc_auc_score(yt, yp),
+            n_bootstrap=n_bootstrap,
+            seed=42,
+            stratified=False,
+        )
 
-        rng = np.random.default_rng(42)
-        n = len(y_true)
-
-        for _ in range(n_bootstrap):
-            idx = rng.choice(n, size=n, replace=True)
-            y_true_boot = y_true[idx]
-            y_prob_boot = y_prob[idx]
-
-            # Need at least one positive and one negative
-            if len(np.unique(y_true_boot)) < 2:
-                continue
-
-            try:
-                auroc_samples.append(roc_auc_score(y_true_boot, y_prob_boot))
-                auprc_samples.append(average_precision_score(y_true_boot, y_prob_boot))
-            except ValueError:
-                continue
+        # AUPRC bootstrap
+        auprc_samples, _ = bootstrap_metric(
+            y_true,
+            y_prob,
+            lambda yt, yp: average_precision_score(yt, yp),
+            n_bootstrap=n_bootstrap,
+            seed=42,
+            stratified=False,
+        )
 
         if len(auroc_samples) > 10:
-            auroc_ci = np.percentile(auroc_samples, [2.5, 97.5])
-            auprc_ci = np.percentile(auprc_samples, [2.5, 97.5])
+            auroc_ci_lower, auroc_ci_upper = compute_percentile_ci(auroc_samples)
+            auprc_ci_lower, auprc_ci_upper = compute_percentile_ci(auprc_samples)
 
-            result["auroc_ci_95"] = [float(auroc_ci[0]), float(auroc_ci[1])]
-            result["auprc_ci_95"] = [float(auprc_ci[0]), float(auprc_ci[1])]
-            result["auroc_ci_fmt"] = f"(95% CI: {auroc_ci[0]:.3f}-{auroc_ci[1]:.3f})"
-            result["auprc_ci_fmt"] = f"(95% CI: {auprc_ci[0]:.3f}-{auprc_ci[1]:.3f})"
+            if auroc_ci_lower is not None:
+                result["auroc_ci_95"] = [auroc_ci_lower, auroc_ci_upper]
+                result["auroc_ci_fmt"] = f"(95% CI: {auroc_ci_lower:.3f}-{auroc_ci_upper:.3f})"
+
+            if auprc_ci_lower is not None:
+                result["auprc_ci_95"] = [auprc_ci_lower, auprc_ci_upper]
+                result["auprc_ci_fmt"] = f"(95% CI: {auprc_ci_lower:.3f}-{auprc_ci_upper:.3f})"
 
     return result
 
@@ -207,7 +222,7 @@ def compute_calibration_metrics(
     y_true: np.ndarray,
     y_prob: np.ndarray,
     n_bins: int = 10,
-) -> dict[str, Any]:
+) -> CalibrationMetrics:
     """Compute calibration metrics.
 
     Args:
@@ -248,11 +263,12 @@ def compute_calibration_metrics(
         # This is the Van Calster method: logit(Y) = α + offset(logit_p)
         try:
             int_model = Logit(y_true, np.ones_like(y_true), offset=logit_p).fit(disp=0)
-            intercept = float(int_model.params.iloc[0])
-        except Exception as e:
+            intercept = float(int_model.params[0])
+        except (ValueError, np.linalg.LinAlgError) as e:
             # Fallback to sklearn method if statsmodels fails
             logger.warning(
-                "Statsmodels calibration intercept failed, using sklearn fallback: %s",
+                "Statsmodels calibration intercept failed (%s): %s. Falling back to sklearn.",
+                type(e).__name__,
                 str(e),
             )
             lr_int = LogisticRegression(solver="lbfgs", max_iter=1000)
@@ -334,7 +350,7 @@ def compute_classification_at_threshold(
     threshold: float,
     bootstrap_ci: bool = True,
     n_bootstrap: int = 1000,
-) -> dict[str, Any]:
+) -> ClassificationMetrics:
     """Compute classification metrics at a specific threshold.
 
     Args:
@@ -353,16 +369,16 @@ def compute_classification_at_threshold(
     # Confusion matrix
     tn, fp, fn, tp = confusion_matrix(y_true, y_pred, labels=[0, 1]).ravel()
 
-    # Core metrics
-    sensitivity = tp / (tp + fn) if (tp + fn) > 0 else 0.0
-    specificity = tn / (tn + fp) if (tn + fp) > 0 else 0.0
-    ppv = tp / (tp + fp) if (tp + fp) > 0 else 0.0
-    npv = tn / (tn + fn) if (tn + fn) > 0 else 0.0
+    # Core metrics using safe_divide for consistency
+    sensitivity = safe_divide(tp, tp + fn)
+    specificity = safe_divide(tn, tn + fp)
+    ppv = safe_divide(tp, tp + fp)
+    npv = safe_divide(tn, tn + fn)
     f1 = f1_score(y_true, y_pred, zero_division=0)
 
     # Additional Van Calster classification metrics
     n_total = tp + tn + fp + fn
-    accuracy = (tp + tn) / n_total if n_total > 0 else 0.0
+    accuracy = safe_divide(tp + tn, n_total)
     balanced_accuracy = (sensitivity + specificity) / 2
     youden_index = sensitivity + specificity - 1
 
@@ -416,48 +432,29 @@ def compute_classification_at_threshold(
         "fn": int(fn),
     }
 
-    # Bootstrap CI for key metrics
+    # Bootstrap CI for key metrics using centralized bootstrap module
     if bootstrap_ci and len(y_true) > 10:
-        sens_samples = []
-        spec_samples = []
-        ppv_samples = []
+        # Use bootstrap_confusion_metrics for sens/spec/ppv CIs
+        ci_results = bootstrap_confusion_metrics(
+            y_true,
+            y_prob,
+            threshold=threshold,
+            n_bootstrap=n_bootstrap,
+            seed=42,
+            stratified=False,  # Backward compatibility
+        )
 
-        rng = np.random.default_rng(42)
-        n = len(y_true)
+        if len(ci_results["sensitivity"]) > 10:
+            sens_ci_lower, sens_ci_upper = compute_percentile_ci(ci_results["sensitivity"])
+            spec_ci_lower, spec_ci_upper = compute_percentile_ci(ci_results["specificity"])
+            ppv_ci_lower, ppv_ci_upper = compute_percentile_ci(ci_results["ppv"])
 
-        for _ in range(n_bootstrap):
-            idx = rng.choice(n, size=n, replace=True)
-            y_true_boot = y_true[idx]
-            y_pred_boot = (y_prob[idx] >= threshold).astype(int)
-
-            try:
-                tn_b, fp_b, fn_b, tp_b = confusion_matrix(
-                    y_true_boot, y_pred_boot, labels=[0, 1]
-                ).ravel()
-
-                sens_b = tp_b / (tp_b + fn_b) if (tp_b + fn_b) > 0 else 0.0
-                spec_b = tn_b / (tn_b + fp_b) if (tn_b + fp_b) > 0 else 0.0
-                ppv_b = tp_b / (tp_b + fp_b) if (tp_b + fp_b) > 0 else 0.0
-
-                sens_samples.append(sens_b)
-                spec_samples.append(spec_b)
-                ppv_samples.append(ppv_b)
-            except ValueError:
-                continue
-
-        if len(sens_samples) > 10:
-            result["sensitivity_ci_95"] = [
-                float(np.percentile(sens_samples, 2.5)),
-                float(np.percentile(sens_samples, 97.5)),
-            ]
-            result["specificity_ci_95"] = [
-                float(np.percentile(spec_samples, 2.5)),
-                float(np.percentile(spec_samples, 97.5)),
-            ]
-            result["ppv_ci_95"] = [
-                float(np.percentile(ppv_samples, 2.5)),
-                float(np.percentile(ppv_samples, 97.5)),
-            ]
+            if sens_ci_lower is not None:
+                result["sensitivity_ci_95"] = [sens_ci_lower, sens_ci_upper]
+            if spec_ci_lower is not None:
+                result["specificity_ci_95"] = [spec_ci_lower, spec_ci_upper]
+            if ppv_ci_lower is not None:
+                result["ppv_ci_95"] = [ppv_ci_lower, ppv_ci_upper]
 
     return result
 

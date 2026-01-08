@@ -13,7 +13,9 @@ from typing import Any
 
 import numpy as np
 import polars as pl
-from sklearn.metrics import confusion_matrix, roc_auc_score
+from sklearn.metrics import roc_auc_score
+
+from faircareai.core.metrics import compute_confusion_metrics
 
 
 def compute_subgroup_metrics(
@@ -81,32 +83,25 @@ def compute_subgroup_metrics(
         prevalence = np.mean(y_true)
         group_result["prevalence"] = float(prevalence)
 
-        # Confusion matrix
+        # Classification metrics from confusion matrix
         try:
-            tn, fp, fn, tp = confusion_matrix(y_true, y_pred, labels=[0, 1]).ravel()
+            cm = compute_confusion_metrics(y_true, y_pred, fairness_naming=True)
         except ValueError:
             group_result["error"] = "Could not compute metrics"
             results["groups"][str(group)] = group_result
             continue
 
-        # Classification metrics
-        tpr = tp / (tp + fn) if (tp + fn) > 0 else 0.0
-        fpr = fp / (fp + tn) if (fp + tn) > 0 else 0.0
-        ppv = tp / (tp + fp) if (tp + fp) > 0 else 0.0
-        npv = tn / (tn + fn) if (tn + fn) > 0 else 0.0
-        selection_rate = (tp + fp) / n
-
         group_result.update(
             {
-                "tpr": float(tpr),
-                "fpr": float(fpr),
-                "ppv": float(ppv),
-                "npv": float(npv),
-                "selection_rate": float(selection_rate),
-                "tp": int(tp),
-                "fp": int(fp),
-                "tn": int(tn),
-                "fn": int(fn),
+                "tpr": float(cm["tpr"]),
+                "fpr": float(cm["fpr"]),
+                "ppv": float(cm["ppv"]),
+                "npv": float(cm["npv"]),
+                "selection_rate": float(cm["selection_rate"]),
+                "tp": cm["tp"],
+                "fp": cm["fp"],
+                "tn": cm["tn"],
+                "fn": cm["fn"],
             }
         )
 
@@ -285,18 +280,13 @@ def compute_intersectional(
 
         # Confusion matrix metrics
         try:
-            tn, fp, fn, tp = confusion_matrix(y_true, y_pred, labels=[0, 1]).ravel()
-            tpr = tp / (tp + fn) if (tp + fn) > 0 else 0.0
-            fpr = fp / (fp + tn) if (fp + tn) > 0 else 0.0
-            ppv = tp / (tp + fp) if (tp + fp) > 0 else 0.0
-            selection_rate = (tp + fp) / n
-
+            cm = compute_confusion_metrics(y_true, y_pred, fairness_naming=True)
             group_result.update(
                 {
-                    "tpr": float(tpr),
-                    "fpr": float(fpr),
-                    "ppv": float(ppv),
-                    "selection_rate": float(selection_rate),
+                    "tpr": float(cm["tpr"]),
+                    "fpr": float(cm["fpr"]),
+                    "ppv": float(cm["ppv"]),
+                    "selection_rate": float(cm["selection_rate"]),
                 }
             )
         except ValueError:

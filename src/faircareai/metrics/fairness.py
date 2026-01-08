@@ -12,6 +12,9 @@ from typing import Any
 
 import numpy as np
 import polars as pl
+
+from faircareai.core.bootstrap import bootstrap_auroc
+from faircareai.core.types import DisparityIndexResult, FairnessResult
 from sklearn.calibration import calibration_curve
 from sklearn.metrics import confusion_matrix, roc_auc_score
 
@@ -47,7 +50,7 @@ def compute_fairness_metrics(
     group_col: str,
     threshold: float = 0.5,
     reference: str | None = None,
-) -> dict[str, Any]:
+) -> FairnessResult:
     """Compute comprehensive fairness metrics for a sensitive attribute.
 
     Args:
@@ -269,7 +272,7 @@ def compute_disparity_index(
     group_col: str,
     threshold: float = 0.5,
     reference: str | None = None,
-) -> dict[str, Any]:
+) -> DisparityIndexResult:
     """Compute aggregate disparity index across metrics.
 
     The disparity index combines multiple fairness metrics into
@@ -535,45 +538,19 @@ def compute_group_auroc_comparison(
 
         auroc = roc_auc_score(y_true, y_prob)
 
-        # Bootstrap CI
-        auroc_samples = []
-        rng = np.random.default_rng(DEFAULT_BOOTSTRAP_SEED)
-        n = len(y_true)
-
-        for i in range(n_bootstrap):
-            idx = rng.choice(n, size=n, replace=True)
-            y_true_boot = y_true[idx]
-            y_prob_boot = y_prob[idx]
-
-            if len(np.unique(y_true_boot)) < 2:
-                continue
-
-            try:
-                auroc_samples.append(roc_auc_score(y_true_boot, y_prob_boot))
-            except ValueError as e:
-                logger.debug(
-                    "Bootstrap AUROC iteration %d failed for group %s: %s", i, group, str(e)
-                )
-                continue
-
-        if len(auroc_samples) > MIN_BOOTSTRAP_SAMPLES:
-            auroc_ci = np.percentile(auroc_samples, [2.5, 97.5])
-        else:
-            logger.debug(
-                "Insufficient bootstrap samples for group %s: %d < %d",
-                group,
-                len(auroc_samples),
-                MIN_BOOTSTRAP_SAMPLES,
-            )
-            auroc_ci = [None, None]
+        # Bootstrap CI using centralized bootstrap module
+        _, auroc_ci_lower, auroc_ci_upper = bootstrap_auroc(
+            y_true,
+            y_prob,
+            n_bootstrap=n_bootstrap,
+            seed=DEFAULT_BOOTSTRAP_SEED,
+            stratified=False,  # Backward compatibility
+        )
 
         results["groups"][str(group)] = {
             "n": len(y_true),
             "auroc": float(auroc),
-            "auroc_ci_95": [
-                float(auroc_ci[0]) if auroc_ci[0] is not None else None,
-                float(auroc_ci[1]) if auroc_ci[1] is not None else None,
-            ],
+            "auroc_ci_95": [auroc_ci_lower, auroc_ci_upper],
         }
 
     # Determine reference

@@ -14,7 +14,6 @@ from faircareai.core.statistical import (
     clopper_pearson_ci,
     get_sample_status,
     get_sample_warning,
-    wilson_score_ci,
 )
 
 
@@ -57,6 +56,65 @@ def _compute_confusion_matrix(
 def _safe_divide(numerator: int, denominator: int, default: float = 0.0) -> float:
     """Safe division with default for zero denominator."""
     return numerator / denominator if denominator > 0 else default
+
+
+def compute_confusion_metrics(
+    y_true: "np.ndarray",
+    y_pred: "np.ndarray",
+    fairness_naming: bool = False,
+) -> dict[str, float | int]:
+    """Compute standard classification metrics from confusion matrix.
+
+    Centralizes the common pattern of computing confusion matrix and deriving
+    standard metrics (sensitivity, specificity, PPV, NPV, selection rate).
+
+    Args:
+        y_true: True binary labels (numpy array).
+        y_pred: Predicted binary labels (numpy array).
+        fairness_naming: If True, use fairness-style names (tpr/fpr) instead
+            of clinical names (sensitivity/specificity). Default False.
+
+    Returns:
+        Dict with keys: tn, fp, fn, tp, n, plus either:
+        - Clinical: sensitivity, specificity, ppv, npv, selection_rate
+        - Fairness: tpr, fpr, ppv, npv, selection_rate
+
+    Example:
+        >>> cm = compute_confusion_metrics(y_true, y_pred)
+        >>> print(f"Sensitivity: {cm['sensitivity']:.3f}")
+        >>> cm_fair = compute_confusion_metrics(y_true, y_pred, fairness_naming=True)
+        >>> print(f"TPR: {cm_fair['tpr']:.3f}")
+    """
+    import numpy as np
+    from sklearn.metrics import confusion_matrix as sklearn_cm
+
+    from faircareai.core.validation import safe_divide
+
+    tn, fp, fn, tp = sklearn_cm(y_true, y_pred, labels=[0, 1]).ravel()
+    n = len(y_true)
+
+    sens = safe_divide(tp, tp + fn)
+    spec = safe_divide(tn, tn + fp)
+
+    result: dict[str, float | int] = {
+        "tn": int(tn),
+        "fp": int(fp),
+        "fn": int(fn),
+        "tp": int(tp),
+        "n": n,
+        "ppv": safe_divide(tp, tp + fp),
+        "npv": safe_divide(tn, tn + fn),
+        "selection_rate": safe_divide(tp + fp, n),
+    }
+
+    if fairness_naming:
+        result["tpr"] = sens
+        result["fpr"] = safe_divide(fp, fp + tn)  # FP / (FP + TN)
+    else:
+        result["sensitivity"] = sens
+        result["specificity"] = spec
+
+    return result
 
 
 def compute_metrics_for_group(
@@ -144,8 +202,8 @@ def compute_metric_ci(
     Returns:
         Tuple of (lower, upper) CI bounds.
     """
-    ci_func = (
-        clopper_pearson_ci if group_metrics.ci_method == "clopper_pearson" else wilson_score_ci
+    ci_func = clopper_pearson_ci if group_metrics.ci_method == "clopper_pearson" else (
+        lambda s, t, c=0.95: ci_wilson(s, t, alpha=1-c)
     )
 
     # Map metric to numerator/denominator
