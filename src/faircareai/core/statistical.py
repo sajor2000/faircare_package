@@ -1,6 +1,9 @@
 """
 Statistical Functions for FairCareAI
 
+DEPRECATED: This module provides backward compatibility wrappers.
+For new code, use faircareai.core.statistics instead.
+
 Implements confidence intervals and hypothesis tests following
 the statistical standards in CLAUDE.md:
 - Wilson score CI for single proportions
@@ -12,6 +15,9 @@ import math
 
 from scipy import stats
 
+# Import modern implementations from statistics.py
+from faircareai.core.statistics import ci_wilson, ci_newcombe_wilson
+
 
 def wilson_score_ci(
     successes: int,
@@ -20,6 +26,8 @@ def wilson_score_ci(
 ) -> tuple[float, float]:
     """
     Compute Wilson score confidence interval for a proportion.
+
+    DEPRECATED: Use ci_wilson from faircareai.core.statistics instead.
 
     The Wilson score interval is recommended over the Wald interval
     for its better coverage properties, especially near 0 or 1.
@@ -43,6 +51,7 @@ def wilson_score_ci(
         Wilson, E.B. (1927). Probable inference, the law of succession,
         and statistical inference.
     """
+    # Input validation for backward compatibility
     if successes < 0 or trials < 0:
         raise ValueError("successes and trials must be non-negative")
     if successes > trials:
@@ -51,18 +60,9 @@ def wilson_score_ci(
     if trials == 0:
         return (0.0, 1.0)
 
-    p_hat = successes / trials
-    z = stats.norm.ppf(1 - (1 - confidence) / 2)
-    z2 = z * z
-
-    denominator = 1 + z2 / trials
-    center = (p_hat + z2 / (2 * trials)) / denominator
-    margin = (z / denominator) * math.sqrt((p_hat * (1 - p_hat) + z2 / (4 * trials)) / trials)
-
-    lower = max(0.0, center - margin)
-    upper = min(1.0, center + margin)
-
-    return (lower, upper)
+    # Convert confidence to alpha for modern implementation
+    alpha = 1 - confidence
+    return ci_wilson(successes, trials, alpha)
 
 
 def clopper_pearson_ci(
@@ -120,6 +120,8 @@ def newcombe_wilson_ci(
     """
     Compute Newcombe-Wilson confidence interval for difference of proportions.
 
+    DEPRECATED: Use ci_newcombe_wilson from faircareai.core.statistics instead.
+
     Uses the Newcombe hybrid score method (Method 10 in Newcombe 1998).
 
     Args:
@@ -140,22 +142,15 @@ def newcombe_wilson_ci(
         Newcombe, R.G. (1998). Interval estimation for the difference
         between independent proportions: comparison of eleven methods.
     """
+    # Edge case handling for backward compatibility
     if trials1 == 0 or trials2 == 0:
         return (-1.0, 1.0)
 
-    p1 = successes1 / trials1
-    p2 = successes2 / trials2
-    diff = p2 - p1
-
-    # Get Wilson CIs for each proportion
-    l1, u1 = wilson_score_ci(successes1, trials1, confidence)
-    l2, u2 = wilson_score_ci(successes2, trials2, confidence)
-
-    # Newcombe hybrid method
-    lower = diff - math.sqrt((p1 - l1) ** 2 + (u2 - p2) ** 2)
-    upper = diff + math.sqrt((u1 - p1) ** 2 + (p2 - l2) ** 2)
-
-    return (max(-1.0, lower), min(1.0, upper))
+    # Convert confidence to alpha for modern implementation
+    alpha = 1 - confidence
+    # Note: ci_newcombe_wilson computes p1 - p2, this function computes p2 - p1
+    # So we swap the order of arguments to get p2 - p1
+    return ci_newcombe_wilson(successes2, trials2, successes1, trials1, alpha)
 
 
 def get_sample_status(n: int, n_positive: int | None = None) -> str:

@@ -9,6 +9,7 @@ from dataclasses import dataclass
 
 import polars as pl
 
+from faircareai.core.statistics import ci_wilson
 from faircareai.core.statistical import (
     clopper_pearson_ci,
     get_sample_status,

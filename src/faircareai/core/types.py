@@ -46,8 +46,8 @@ class GroupMetrics(TypedDict):
     mean_predicted_prob: float
     """Mean predicted probability for this group."""
 
-    calibration_error: float
-    """Difference between mean predicted and observed rate."""
+    mean_calibration_error: float
+    """Mean difference between predicted probability and observed rate (calibration-in-the-large)."""
 
     tp: int
     """True positives count."""

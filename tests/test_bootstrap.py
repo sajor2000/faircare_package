@@ -86,13 +86,18 @@ class TestBootstrapMetric:
         assert samples1 == samples2
 
     def test_different_seeds_differ(self, sample_data: tuple[np.ndarray, np.ndarray]) -> None:
-        """Test that different seeds produce different results."""
+        """Test that different seeds produce different results.
+
+        Note: Using stratified=False because stratified bootstrap preserves
+        class proportions exactly, which can lead to very similar results
+        for simple statistics like the mean.
+        """
         y_true, y_prob = sample_data
         samples1, _ = bootstrap_metric(
-            y_true, y_prob, lambda yt, yp: yt.mean(), n_bootstrap=50, seed=1
+            y_true, y_prob, lambda yt, yp: yt.mean(), n_bootstrap=50, seed=1, stratified=False
         )
         samples2, _ = bootstrap_metric(
-            y_true, y_prob, lambda yt, yp: yt.mean(), n_bootstrap=50, seed=2
+            y_true, y_prob, lambda yt, yp: yt.mean(), n_bootstrap=50, seed=2, stratified=False
         )
         assert samples1 != samples2
 

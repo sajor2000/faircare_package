@@ -124,7 +124,7 @@ def compute_fairness_metrics(
         # Calibration (difference between mean predicted and observed rate)
         observed_rate = (tp + fn) / n if n > 0 else 0.0
         predicted_rate = mean_prob
-        calibration_error = predicted_rate - observed_rate
+        mean_calibration_error = predicted_rate - observed_rate
 
         results["group_metrics"][str(group)] = {
             "n": int(n),
@@ -135,7 +135,7 @@ def compute_fairness_metrics(
             "ppv": float(ppv),
             "npv": float(npv),
             "mean_predicted_prob": mean_prob,
-            "calibration_error": float(calibration_error),
+            "mean_calibration_error": float(mean_calibration_error),
             "tp": int(tp),
             "fp": int(fp),
             "tn": int(tn),
@@ -162,7 +162,7 @@ def compute_fairness_metrics(
     ref_tpr = ref_metrics.get("tpr", 0)
     ref_fpr = ref_metrics.get("fpr", 0)
     ref_ppv = ref_metrics.get("ppv", 0)
-    ref_cal = ref_metrics.get("calibration_error", 0)
+    ref_cal = ref_metrics.get("mean_calibration_error", 0)
 
     for group in groups:
         if str(group) == str(reference):
@@ -201,7 +201,7 @@ def compute_fairness_metrics(
             results["ppv_ratio"][str(group)] = None
 
         # Calibration difference
-        cal = group_data.get("calibration_error", 0)
+        cal = group_data.get("mean_calibration_error", 0)
         results["calibration_diff"][str(group)] = float(cal - ref_cal)
 
     # Summary statistics

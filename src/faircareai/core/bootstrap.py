@@ -42,10 +42,11 @@ def bootstrap_metric(
     n_bootstrap: int = DEFAULT_N_BOOTSTRAP,
     seed: int = DEFAULT_BOOTSTRAP_SEED,
     min_classes: int = 2,
+    stratified: bool = True,
 ) -> tuple[list[T], int]:
     """Compute bootstrap samples for a metric.
 
-    Performs stratified bootstrap resampling and computes the specified
+    Performs bootstrap resampling (stratified by default) and computes the specified
     metric for each bootstrap sample. Handles edge cases where bootstrap
     samples don't have sufficient class variation.
 
@@ -58,6 +59,8 @@ def bootstrap_metric(
         seed: Random seed for reproducibility (default: 42).
         min_classes: Minimum unique classes required in bootstrap sample
             (default: 2 for binary classification).
+        stratified: If True, preserve class proportions in each bootstrap sample.
+            Recommended for imbalanced datasets (default: True).
 
     Returns:
         Tuple of:
@@ -70,8 +73,15 @@ def bootstrap_metric(
         ...     y_true, y_prob,
         ...     lambda yt, yp: roc_auc_score(yt, yp),
         ...     n_bootstrap=1000,
+        ...     stratified=True,
         ... )
         >>> print(f"Computed {len(samples)} samples, {n_failed} failed")
+
+    Note:
+        Stratified bootstrap preserves class proportions by sampling within each
+        class separately, then combining. This provides tighter confidence intervals
+        for imbalanced datasets (prevalence < 10% or > 90%) while maintaining
+        correct coverage properties.
     """
     samples: list[T] = []
     n_failed = 0
@@ -83,8 +93,37 @@ def bootstrap_metric(
         logger.warning("Bootstrap called with empty arrays")
         return [], 0
 
+    # Pre-compute class stratification for stratified bootstrap
+    if stratified:
+        unique_classes = np.unique(y_true)
+        # Fall back to simple bootstrap if only one class (stratification not possible)
+        if len(unique_classes) < 2:
+            stratified = False
+        else:
+            # Build index map for each class
+            class_indices_map = {
+                class_value: np.where(y_true == class_value)[0]
+                for class_value in unique_classes
+            }
+
     for i in range(n_bootstrap):
-        idx = rng.choice(n, size=n, replace=True)
+        if stratified:
+            # Stratified bootstrap: sample within each class separately
+            idx_list = []
+            for class_value in unique_classes:
+                class_indices = class_indices_map[class_value]
+                n_class = len(class_indices)
+                # Sample with replacement within this class
+                sampled = rng.choice(class_indices, size=n_class, replace=True)
+                idx_list.extend(sampled)
+
+            # Shuffle to mix classes
+            idx = np.array(idx_list)
+            rng.shuffle(idx)
+        else:
+            # Simple bootstrap: sample from all indices
+            idx = rng.choice(n, size=n, replace=True)
+
         y_true_boot = y_true[idx]
         y_prob_boot = y_prob[idx]
 
@@ -121,6 +160,7 @@ def bootstrap_confusion_metrics(
     threshold: float,
     n_bootstrap: int = DEFAULT_N_BOOTSTRAP,
     seed: int = DEFAULT_BOOTSTRAP_SEED,
+    stratified: bool = True,
 ) -> dict[str, list[float]]:
     """Compute bootstrap samples for confusion matrix-derived metrics.
 
@@ -133,6 +173,8 @@ def bootstrap_confusion_metrics(
         threshold: Decision threshold for classification.
         n_bootstrap: Number of bootstrap iterations.
         seed: Random seed for reproducibility.
+        stratified: If True, preserve class proportions in each bootstrap sample
+            (default: True).
 
     Returns:
         Dict with lists of bootstrap samples for each metric:
@@ -154,8 +196,32 @@ def bootstrap_confusion_metrics(
     n = len(y_true)
     n_failed = 0
 
+    # Pre-compute class stratification for stratified bootstrap
+    if stratified:
+        unique_classes = np.unique(y_true)
+        if len(unique_classes) < 2:
+            stratified = False
+        else:
+            class_indices_map = {
+                class_value: np.where(y_true == class_value)[0]
+                for class_value in unique_classes
+            }
+
     for i in range(n_bootstrap):
-        idx = rng.choice(n, size=n, replace=True)
+        if stratified:
+            # Stratified bootstrap
+            idx_list = []
+            for class_value in unique_classes:
+                class_indices = class_indices_map[class_value]
+                n_class = len(class_indices)
+                sampled = rng.choice(class_indices, size=n_class, replace=True)
+                idx_list.extend(sampled)
+
+            idx = np.array(idx_list)
+            rng.shuffle(idx)
+        else:
+            # Simple bootstrap
+            idx = rng.choice(n, size=n, replace=True)
         y_true_boot = y_true[idx]
         y_pred_boot = (y_prob[idx] >= threshold).astype(int)
 
@@ -267,6 +333,7 @@ def bootstrap_auroc(
     y_prob: NDArray[np.floating],
     n_bootstrap: int = DEFAULT_N_BOOTSTRAP,
     seed: int = DEFAULT_BOOTSTRAP_SEED,
+    stratified: bool = True,
 ) -> tuple[list[float], float | None, float | None]:
     """Bootstrap AUROC with confidence interval.
 
@@ -278,6 +345,8 @@ def bootstrap_auroc(
         y_prob: Predicted probabilities.
         n_bootstrap: Number of bootstrap iterations.
         seed: Random seed for reproducibility.
+        stratified: If True, preserve class proportions in each bootstrap sample
+            (default: True).
 
     Returns:
         Tuple of:
@@ -299,6 +368,7 @@ def bootstrap_auroc(
         n_bootstrap=n_bootstrap,
         seed=seed,
         min_classes=2,
+        stratified=stratified,
     )
 
     ci_lower, ci_upper = compute_percentile_ci(samples)
