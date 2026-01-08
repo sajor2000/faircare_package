@@ -19,6 +19,7 @@ from faircareai.visualization.themes import (
     GOVERNANCE_DISCLAIMER_SHORT,
     SUBPLOT_SPACING,
     apply_faircareai_theme,
+    get_contrast_text_color,
 )
 
 if TYPE_CHECKING:
@@ -245,8 +246,8 @@ def create_executive_summary(results: "AuditResults") -> go.Figure:
             x=0.5,
             font=dict(size=18),
         ),
-        height=700,
-        margin=dict(t=100, b=80),
+        height=800,
+        margin=dict(l=80, r=40, t=80, b=140),  # Extra bottom for rotated labels
         meta={"description": alt_text},  # WCAG 2.1 screen reader support
     )
 
@@ -612,7 +613,7 @@ def create_fairness_dashboard(results: "AuditResults") -> go.Figure:
             [{"type": "bar"}, {"type": "bar"}],
             [{"type": "bar"}, {"type": "indicator"}],
         ],
-        **SUBPLOT_SPACING["default"],
+        **SUBPLOT_SPACING["dashboard"],
     )
 
     # Collect data from all sensitive attributes
@@ -648,7 +649,8 @@ def create_fairness_dashboard(results: "AuditResults") -> go.Figure:
                 y=all_aurocs,
                 marker_color=all_colors,
                 text=[f"{a:.3f}" for a in all_aurocs],
-                textposition="outside",
+                textposition="inside",
+                textfont=dict(color=[get_contrast_text_color(c) for c in all_colors], size=10),
                 hovertemplate="%{x}<br>AUROC: %{y:.3f}<extra></extra>",
             ),
             row=1,
@@ -690,7 +692,8 @@ def create_fairness_dashboard(results: "AuditResults") -> go.Figure:
                 y=selection_rates,
                 marker_color=selection_colors,
                 text=[f"{r:.1%}" for r in selection_rates],
-                textposition="outside",
+                textposition="inside",
+                textfont=dict(color=[get_contrast_text_color(c) for c in selection_colors], size=10),
                 hovertemplate="%{x}<br>Selection Rate: %{y:.1%}<extra></extra>",
             ),
             row=1,
@@ -736,7 +739,8 @@ def create_fairness_dashboard(results: "AuditResults") -> go.Figure:
                 y=fairness_values,
                 marker_color=fairness_colors,
                 text=[f"{v:.2f}" for v in fairness_values],
-                textposition="outside",
+                textposition="inside",
+                textfont=dict(color=[get_contrast_text_color(c) for c in fairness_colors], size=10),
                 hovertemplate="%{x}<br>Disparity: %{y:.3f}<extra></extra>",
             ),
             row=2,
@@ -800,16 +804,40 @@ def create_fairness_dashboard(results: "AuditResults") -> go.Figure:
     fig = apply_faircareai_theme(fig)
     fig.update_layout(
         title=dict(
-            text=f"Fairness Dashboard: {results.config.model_name}",
+            text=f"<b>Fairness Dashboard: {results.config.model_name}</b>",
             x=0.5,
+            font=dict(size=16),
         ),
-        height=700,
+        height=1000,  # Taller for more spacing
+        margin=dict(l=80, r=40, t=100, b=160),  # Extra bottom for rotated labels
         showlegend=False,
         meta={"description": alt_text},  # WCAG 2.1 screen reader support
     )
 
-    # Rotate x-axis labels
-    fig.update_xaxes(tickangle=45)
+    # Add axis titles for each subplot
+    fig.update_xaxes(title_text="Subgroup", tickangle=45, tickfont=dict(size=10), row=1, col=1)
+    fig.update_yaxes(title_text="AUROC Score", tickfont=dict(size=10), row=1, col=1)
+    
+    fig.update_xaxes(title_text="Subgroup", tickangle=45, tickfont=dict(size=10), row=1, col=2)
+    fig.update_yaxes(title_text="Selection Rate (%)", tickfont=dict(size=10), row=1, col=2)
+    
+    fig.update_xaxes(title_text="Fairness Metric", tickangle=45, tickfont=dict(size=10), row=2, col=1)
+    fig.update_yaxes(title_text="Absolute Disparity", tickfont=dict(size=10), row=2, col=1)
+
+    # Style subplot titles smaller to avoid collisions
+    for annotation in fig['layout']['annotations']:
+        if hasattr(annotation, 'text') and annotation.text in ["AUROC by Subgroup", "Selection Rate by Subgroup", "Fairness Metrics", "Disparity Summary"]:
+            annotation.font = dict(size=11, family="Inter, sans-serif")
+
+    # Add source annotation (scientific publication standard)
+    fig.add_annotation(
+        text="<i>Source: FairCareAI Analysis | Methodology: Van Calster et al. (2025)</i>",
+        xref="paper", yref="paper",
+        x=0, y=-0.12,
+        showarrow=False,
+        font=dict(size=9, color="#6B6B6B"),
+        xanchor="left",
+    )
 
     return fig
 
@@ -886,7 +914,8 @@ def plot_subgroup_comparison(
                 else None,
                 marker_color=colors,
                 text=[f"{v:.3f}" for v in values],
-                textposition="outside",
+                textposition="inside",
+                textfont=dict(color=[get_contrast_text_color(c) for c in colors], size=10),
                 hovertemplate=f"{attr_name}: %{{x}}<br>{metric_labels.get(metric, metric)}: %{{y:.3f}}<extra></extra>",
             )
         )
@@ -1192,8 +1221,8 @@ def create_governance_overall_figures(results: "AuditResults") -> dict[str, go.F
             y=values,
             marker_color=colors,
             text=[f"<b>{v:.0f}%</b>" for v in values],
-            textposition="outside",
-            textfont=dict(size=18),
+            textposition="inside",
+            textfont=dict(color=[get_contrast_text_color(c) for c in colors], size=14),
         )
     )
 
@@ -1426,8 +1455,8 @@ def _create_subgroup_bar_chart(
             y=values,
             marker_color=colors,
             text=text_vals,
-            textposition="outside",
-            textfont=dict(size=14),
+            textposition="inside",
+            textfont=dict(color=[get_contrast_text_color(c) for c in colors], size=12),
         )
     )
 

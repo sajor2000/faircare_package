@@ -48,11 +48,11 @@ dependencies = [
     # Data processing - pin major versions for stability
     "polars>=0.20.0,<1.0.0",
     "pyarrow>=14.0.0,<18.0.0",
-    "numpy>=1.24.0,<2.0.0",  # numpy 2.0 has breaking changes
+    "numpy>=1.26.0,<2.0.0",  # Improved Apple Silicon support, avoid numpy 2.0
 
     # Visualization - Interactive
     "plotly>=5.18.0,<6.0.0",
-    # Note: kaleido (Plotly static export) moved to optional deps due to platform limitations
+    # Note: Static exports use vl-convert-python (Altair) and Playwright (PDF)
 
     # Visualization - Static exports
     "altair>=5.2.0,<6.0.0",
@@ -80,10 +80,9 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-# Static image export (optional - has platform limitations on Apple Silicon)
+# Export capabilities: PDF and PowerPoint generation
 export = [
-	"kaleido>=0.2.1,<1.0.0",  # Plotly PNG/PDF/SVG export
-	"weasyprint>=60.0,<70.0",  # PDF report export
+	"playwright>=1.40.0,<2.0.0",  # PDF rendering via browser automation
 	"python-pptx>=0.6.21,<1.0.0",  # PowerPoint report export
 ]
 
@@ -157,7 +156,7 @@ module = [
     "altair.*",
     "streamlit.*",
     "great_tables.*",
-    "weasyprint.*",
+    "playwright.*",
     "pptx.*",
 ]
 ignore_missing_imports = true

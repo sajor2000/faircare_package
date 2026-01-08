@@ -20,10 +20,13 @@ Methodology: Van Calster et al. (2025), CHAI RAIC Checkpoint 1.
 
 from dataclasses import dataclass
 from datetime import date
+import html
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 import polars as pl
+
+from faircareai.core.logging import get_logger
 
 from faircareai.visualization.themes import (
     GOVERNANCE_DISCLAIMER_FULL,
@@ -34,6 +37,9 @@ from faircareai.visualization.themes import (
 if TYPE_CHECKING:
     from faircareai.core.config import MetricDisplayConfig
     from faircareai.core.results import AuditResults
+
+
+logger = get_logger(__name__)
 
 
 @dataclass
@@ -64,7 +70,7 @@ def generate_pdf_report(
     """
     Generate a formal PDF audit report.
 
-    Uses WeasyPrint for CSS Paged Media support.
+    Uses Playwright to render HTML with charts to PDF.
 
     Van Calster et al. (2025) Metric Display:
     -----------------------------------------
@@ -74,18 +80,23 @@ def generate_pdf_report(
     Args:
         summary: AuditSummary with audit results
         output_path: Path for output PDF file
-        include_charts: If True, embed charts as SVG
+        include_charts: If True, embed charts
         metric_config: MetricDisplayConfig controlling which metrics to display.
             If None, defaults to RECOMMENDED metrics only.
 
     Returns:
         Path to generated PDF file
+
+    Raises:
+        ImportError: If Playwright is not installed or chromium browser not available.
+            Run: pip install playwright && playwright install chromium
     """
     try:
-        from weasyprint import CSS, HTML
+        from playwright.sync_api import sync_playwright
     except ImportError as err:
         raise ImportError(
-            "WeasyPrint is required for PDF generation. Install with: pip install 'faircareai[export]'"
+            "Playwright is required for PDF generation. Install with: "
+            "pip install 'faircareai[export]' && playwright install chromium"
         ) from err
 
     output_path = Path(output_path)
@@ -93,14 +104,23 @@ def generate_pdf_report(
     # Generate HTML content
     html_content = _generate_report_html(summary, include_charts)
 
-    # CSS for print layout
-    print_css = CSS(string=_get_print_css())
+    # Use Playwright to render HTML to PDF
+    with sync_playwright() as p:
+        browser = p.chromium.launch()
+        page = browser.new_page()
 
-    # Generate PDF
-    HTML(string=html_content).write_pdf(
-        str(output_path.resolve()),
-        stylesheets=[print_css],
-    )
+        # Load HTML content
+        page.set_content(html_content, wait_until="networkidle")
+
+        # Generate PDF with print styling
+        page.pdf(
+            path=str(output_path.resolve()),
+            format="Letter",
+            margin={"top": "0.5in", "right": "0.5in", "bottom": "0.5in", "left": "0.5in"},
+            print_background=True,
+        )
+
+        browser.close()
 
     return output_path
 
@@ -638,7 +658,12 @@ def _generate_performance_section(results: "AuditResults") -> str:
                 charts_html += f'<div>{fig_html}</div>'
         charts_html += '</div>'
     except Exception as e:
-        charts_html = f'<div class="chart-placeholder">Interactive charts could not be generated: {str(e)}</div>'
+        logger.warning(
+            "Failed to generate interactive charts for performance section: %s",
+            str(e),
+            exc_info=True,
+        )
+        charts_html = f'<div class="chart-placeholder">Interactive charts could not be generated: {html.escape(str(e))}</div>'
 
     return f"""
     <section class="section">
@@ -768,7 +793,12 @@ def _generate_subgroup_section(results: "AuditResults") -> str:
                     charts_html += f'<div>{fig_html}</div>'
             charts_html += '</div>'
     except Exception as e:
-        charts_html = f'<div class="chart-placeholder">Interactive charts could not be generated: {str(e)}</div>'
+        logger.warning(
+            "Failed to generate interactive charts for subgroup section: %s",
+            str(e),
+            exc_info=True,
+        )
+        charts_html = f'<div class="chart-placeholder">Interactive charts could not be generated: {html.escape(str(e))}</div>'
 
     return f"""
     <section class="section">
@@ -904,8 +934,8 @@ def _generate_flags_section(results: "AuditResults") -> str:
 
         flags_html += f"""
         <div class="flag-item {flag_class}">
-            <strong>{severity.upper()}:</strong> {message}
-            {f"<br><small>{details}</small>" if details else ""}
+            <strong>{severity.upper()}:</strong> {html.escape(message)}
+            {f"<br><small>{html.escape(details)}</small>" if details else ""}
         </div>
         """
 
@@ -1447,6 +1477,7 @@ def generate_governance_pdf_report(
     """Generate streamlined PDF report for governance committees.
 
     Creates a 3-5 page report with key figures and plain language summaries.
+    Uses Playwright to render interactive charts directly to PDF.
 
     Van Calster et al. (2025) Metric Display:
     -----------------------------------------
@@ -1461,30 +1492,60 @@ def generate_governance_pdf_report(
 
     Returns:
         Path to generated PDF file
+
+    Raises:
+        ImportError: If Playwright is not installed or chromium browser not available.
+            Run: pip install playwright && playwright install chromium
     """
     try:
-        from weasyprint import CSS, HTML
+        from playwright.sync_api import sync_playwright
     except ImportError as err:
         raise ImportError(
-            "WeasyPrint is required for PDF generation. Install with: pip install 'faircareai[export]'"
+            "Playwright is required for PDF generation. Install with: "
+            "pip install 'faircareai[export]' && playwright install chromium"
         ) from err
 
     output_path = Path(output_path)
 
+    # Generate HTML with interactive charts
     html_content = _generate_governance_html(results)
-    print_css = CSS(string=_get_governance_print_css())
 
-    HTML(string=html_content).write_pdf(
-        str(output_path.resolve()),
-        stylesheets=[print_css],
+    # Embed Plotly.js for charts
+    html_content = html_content.replace(
+        "</head>",
+        '<script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script></head>',
     )
+
+    # Use Playwright to render HTML to PDF
+    with sync_playwright() as p:
+        browser = p.chromium.launch()
+        page = browser.new_page()
+
+        # Load HTML content
+        page.set_content(html_content, wait_until="networkidle")
+
+        # Generate PDF with print styling
+        page.pdf(
+            path=str(output_path.resolve()),
+            format="Letter",
+            margin={"top": "0.5in", "right": "0.5in", "bottom": "0.5in", "left": "0.5in"},
+            print_background=True,
+        )
+
+        browser.close()
 
     return output_path
 
 
 def _generate_governance_html(results: "AuditResults") -> str:
-    """Generate streamlined HTML content for governance persona."""
+    """Generate streamlined HTML content for governance persona.
 
+    Generates interactive Plotly charts that work in both HTML and PDF
+    (when rendered with Playwright).
+
+    Args:
+        results: Audit results to render.
+    """
     gov = results.governance_recommendation
 
     # Compute status from error/warning counts (don't rely on 'status' key)
@@ -1511,17 +1572,27 @@ def _generate_governance_html(results: "AuditResults") -> str:
         "REVIEW": "Issues Exceeded Threshold",
     }
 
-    # Generate figures
+    # Generate interactive figures (work in both HTML and PDF via Playwright)
     try:
         overall_figures_html = _render_governance_overall_figures(results)
-    except Exception:
+    except Exception as e:
+        logger.warning(
+            "Failed to generate governance overall figures: %s",
+            str(e),
+            exc_info=True,
+        )
         overall_figures_html = (
             '<p class="chart-placeholder">Overall figures could not be generated.</p>'
         )
 
     try:
         subgroup_figures_html = _render_governance_subgroup_figures(results)
-    except Exception:
+    except Exception as e:
+        logger.warning(
+            "Failed to generate governance subgroup figures: %s",
+            str(e),
+            exc_info=True,
+        )
         subgroup_figures_html = (
             '<p class="chart-placeholder">Subgroup figures could not be generated.</p>'
         )
@@ -1830,7 +1901,14 @@ def _generate_governance_html(results: "AuditResults") -> str:
 
 
 def _render_governance_overall_figures(results: "AuditResults") -> str:
-    """Render the 4 overall performance figures for governance report."""
+    """Render the 4 overall performance figures for governance report.
+
+    Generates interactive Plotly charts that work in both HTML and PDF
+    (when rendered with Playwright).
+
+    Args:
+        results: AuditResults object
+    """
     from faircareai.visualization.governance_dashboard import (
         create_governance_overall_figures,
     )
@@ -1841,6 +1919,7 @@ def _render_governance_overall_figures(results: "AuditResults") -> str:
         html_parts = ['<div class="figure-grid">']
         for title, fig in figures.items():
             if fig is not None:
+                # Render interactive Plotly chart
                 fig_html = fig.to_html(full_html=False, include_plotlyjs=False)
                 html_parts.append(f"""
                 <div class="figure-container">
@@ -1851,11 +1930,23 @@ def _render_governance_overall_figures(results: "AuditResults") -> str:
         html_parts.append("</div>")
         return "".join(html_parts)
     except Exception as e:
-        return f'<p class="chart-placeholder">Overall figures could not be generated: {e}</p>'
+        logger.warning(
+            "Failed to render governance overall figures: %s",
+            str(e),
+            exc_info=True,
+        )
+        return f'<p class="chart-placeholder">Overall figures could not be generated: {html.escape(str(e))}</p>'
 
 
 def _render_governance_subgroup_figures(results: "AuditResults") -> str:
-    """Render the subgroup performance figures for governance report."""
+    """Render the subgroup performance figures for governance report.
+
+    Generates interactive Plotly charts that work in both HTML and PDF
+    (when rendered with Playwright).
+
+    Args:
+        results: Audit results to visualize.
+    """
     from faircareai.visualization.governance_dashboard import (
         create_governance_subgroup_figures,
     )
@@ -1870,6 +1961,7 @@ def _render_governance_subgroup_figures(results: "AuditResults") -> str:
             html_parts.append('<div class="figure-grid">')
             for title, fig in figures.items():
                 if fig is not None:
+                    # Render interactive Plotly chart
                     fig_html = fig.to_html(full_html=False, include_plotlyjs=False)
                     html_parts.append(f"""
                     <div class="figure-container">
@@ -1885,7 +1977,12 @@ def _render_governance_subgroup_figures(results: "AuditResults") -> str:
             else '<p class="chart-placeholder">No subgroup figures available.</p>'
         )
     except Exception as e:
-        return f'<p class="chart-placeholder">Subgroup figures could not be generated: {e}</p>'
+        logger.warning(
+            "Failed to render governance subgroup figures: %s",
+            str(e),
+            exc_info=True,
+        )
+        return f'<p class="chart-placeholder">Subgroup figures could not be generated: {html.escape(str(e))}</p>'
 
 
 def _generate_plain_language_findings(results: "AuditResults") -> str:

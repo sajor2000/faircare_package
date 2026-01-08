@@ -51,6 +51,7 @@ from .themes import (
     TYPOGRAPHY,
     GhostingConfig,
     calculate_chart_height,
+    get_contrast_text_color,
     register_plotly_template,
 )
 
@@ -855,15 +856,16 @@ def create_metric_comparison_chart(
     for metric in metrics:
         if metric in df.columns:
             display_label = get_metric_display_label(metric)
+            bar_color = metric_colors.get(metric, GROUP_COLORS[0])
             fig.add_trace(
                 go.Bar(
                     name=display_label,
                     x=groups,
                     y=df[metric],
-                    marker_color=metric_colors.get(metric, GROUP_COLORS[0]),
+                    marker_color=bar_color,
                     text=[f"{v:.0%}" for v in df[metric]],
-                    textposition="outside",
-                    textfont=dict(size=TYPOGRAPHY["tick_size"]),
+                    textposition="inside",
+                    textfont=dict(color=get_contrast_text_color(bar_color), size=TYPOGRAPHY["tick_size"]),
                     hovertemplate=(f"<b>%{{x}}</b><br>{display_label}: %{{y:.1%}}<extra></extra>"),
                 )
             )
@@ -1293,8 +1295,8 @@ def create_sample_size_waterfall(
                 line=dict(color="white", width=1),
             ),
             text=[f"{n:,}" for n in df["n"]],
-            textposition="outside",
-            textfont=dict(size=TYPOGRAPHY["tick_size"], color=SEMANTIC_COLORS["text"]),
+            textposition="inside",
+            textfont=dict(color=[get_contrast_text_color(c) for c in colors], size=TYPOGRAPHY["tick_size"]),
             hovertemplate="<b>%{x}</b><br>n = %{y:,}<extra></extra>",
         )
     )
@@ -1489,7 +1491,8 @@ def create_equity_dashboard(
                 marker_color=bar_colors,
                 showlegend=False,
                 text=[f"{d:+.1%}" for d in disparities],
-                textposition="outside",
+                textposition="inside",
+                textfont=dict(color=[get_contrast_text_color(c) for c in bar_colors], size=10),
             ),
             row=2,
             col=2,
@@ -1666,9 +1669,13 @@ def create_subgroup_heatmap(
         )
     )
 
-    # Add text annotations
+    # Add text annotations with WCAG-compliant contrast
+    # RdYlGn colorscale: red (0) → yellow (0.5) → green (1)
+    # Red and green are dark (need white text), yellow is light (needs dark text)
     for i, row in enumerate(z_data):
         for j, val in enumerate(row):
+            # Use dark text for yellow range (0.3-0.7), white text for red/green
+            text_color = SEMANTIC_COLORS["text"] if 0.3 <= val <= 0.7 else "white"
             fig.add_annotation(
                 x=x_labels[j],
                 y=y_labels[i],
@@ -1676,7 +1683,7 @@ def create_subgroup_heatmap(
                 showarrow=False,
                 font=dict(
                     size=TYPOGRAPHY["annotation_size"],
-                    color="white" if val < 0.5 or val > 0.85 else SEMANTIC_COLORS["text"],
+                    color=text_color,
                 ),
             )
 

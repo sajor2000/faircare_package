@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FairCareAI Audit Report: Test Model - Chart Verification</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+        :root {
+            --pass-color: #009E73;
+            --warn-color: #C9B900;
+            --fail-color: #D55E00;
+            --bg-color: #f8f9fa;
+            --text-color: #212529;
+            --primary-color: #2c5282;
+            --secondary-color: #4a5568;
+            --border-color: #e2e8f0;
+        }
+
+        * { box-sizing: border-box; }
+
+        /* JAMA Scientific Publication Style - Large, Clear, Readable */
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            font-size: 11px;  /* 18px - JAMA readable */
+            color: var(--text-color);
+            background-color: var(--bg-color);
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+        }
+
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+
+        h1, h2, h3 {
+            font-weight: 600;
+            color: var(--primary-color);
+            margin-top: 0;
+        }
+
+        /* JAMA-style large headers */
+        h1 { font-size: 18px; margin-bottom: 12px; }  /* 40px */
+        h2 { font-size: 14px; margin-top: 40px; border-bottom: 2px solid var(--primary-color); padding-bottom: 10px; }  /* 32px */
+        h3 { font-size: 13px; margin-top: 28px; color: var(--secondary-color); }  /* 28px */
+
+        .header {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+        }
+
+        /* JAMA readable metadata */
+        .metadata { color: #666; font-size: 10px; }  /* 18px */
+
+        .status-badge {
+            display: inline-block;
+            padding: 14px 28px;
+            border-radius: 6px;
+            font-weight: 700;
+            font-size: 13px;  /* 28px - prominent */
+            color: white;
+            background-color: #C9B900;
+            margin: 16px 0;
+        }
+
+        .section {
+            background: white;
+            padding: 28px;
+            border-radius: 8px;
+            margin-bottom: 24px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .scorecard {
+            display: flex;
+            gap: 20px;
+            margin: 24px 0;
+            flex-wrap: wrap;
+        }
+
+        .scorecard-item {
+            flex: 1;
+            min-width: 140px;
+            text-align: center;
+            padding: 20px;
+            border-radius: 8px;
+            background: var(--bg-color);
+        }
+
+        /* JAMA large scorecard numbers */
+        .scorecard-value {
+            font-size: 18px;  /* 40px - prominent */
+            font-weight: 700;
+        }
+
+        .scorecard-label {
+            font-size: 10px;  /* 18px - readable */
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .pass { color: var(--pass-color); }
+        .warn { color: var(--warn-color); }
+        .fail { color: var(--fail-color); }
+
+        /* JAMA-style readable tables */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            font-size: 10px;  /* 18px - readable */
+        }
+
+        th, td {
+            padding: 14px 16px;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        th {
+            background: var(--bg-color);
+            font-weight: 600;
+            font-size: 10px;  /* 18px */
+            color: var(--secondary-color);
+        }
+
+        tr:hover { background: rgba(0,0,0,0.02); }
+
+        .flag-item {
+            padding: 12px 16px;
+            border-radius: 6px;
+            margin: 8px 0;
+            border-left: 4px solid;
+        }
+
+        .flag-error {
+            background: rgba(213,94,0,0.1);
+            border-color: var(--fail-color);
+        }
+
+        .flag-warning {
+            background: rgba(240,228,66,0.2);
+            border-color: var(--warn-color);
+        }
+
+        .governance-block {
+            background: #f7fafc;
+            border: 2px solid var(--primary-color);
+            padding: 24px;
+            border-radius: 8px;
+            margin-top: 30px;
+        }
+
+        .signature-line {
+            border-bottom: 1px solid #333;
+            width: 250px;
+            margin-top: 40px;
+            display: inline-block;
+        }
+
+        .footer {
+            margin-top: 40px;
+            padding: 20px;
+            text-align: center;
+            font-size: 14px;
+            color: #666;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .metric-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+
+        .metric-card {
+            background: var(--bg-color);
+            padding: 20px;
+            border-radius: 6px;
+        }
+
+        /* JAMA large metric values */
+        .metric-value {
+            font-size: 14px;  /* 32px - prominent */
+            font-weight: 700;
+            color: var(--primary-color);
+        }
+
+        .metric-label {
+            font-size: 10px;  /* 18px - readable */
+            color: #666;
+        }
+
+        .chart-placeholder {
+            background: var(--bg-color);
+            padding: 40px;
+            text-align: center;
+            border-radius: 6px;
+            color: #666;
+            font-size: 11px;
+        }
+
+        @media print {
+            body { background: white; }
+            .section { box-shadow: none; border: 1px solid #ddd; }
+            .container { max-width: 100%; }
+        }
+    </style>
+<script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script></head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>FairCareAI Audit Report</h1>
+            <p class="metadata">
+                <strong>Model:</strong> Test Model - Chart Verification v1.0.0<br>
+                <strong>Report Date:</strong> 2026-01-08<br>
+                <strong>Primary Fairness Metric:</strong> equalized_odds
+            </p>
+        </header>
+
+        
+    <section class="section">
+        <h2>Section 1: Executive Summary</h2>
+        <div class="status-badge">Near Threshold</div>
+
+        <div class="scorecard">
+            <div class="scorecard-item">
+                <div class="scorecard-value pass">0</div>
+                <div class="scorecard-label">Pass</div>
+            </div>
+            <div class="scorecard-item">
+                <div class="scorecard-value warn">7</div>
+                <div class="scorecard-label">Warnings</div>
+            </div>
+            <div class="scorecard-item">
+                <div class="scorecard-value fail">0</div>
+                <div class="scorecard-label">Critical</div>
+            </div>
+        </div>
+
+        <p><strong>Advisory:</strong> Some metrics near threshold — consider documented mitigation.</p>
+        <p style="font-size: 16px; color: #666; font-style: italic;">
+            This is an advisory assessment. Final deployment decisions rest with the governance committee.
+        </p>
+    </section>
+    
+        
+    <section class="section">
+        <h2>Section 2: Descriptive Statistics (Table 1)</h2>
+
+        <h3>Cohort Overview</h3>
+        <div class="metric-grid">
+            <div class="metric-card">
+                <div class="metric-value">400</div>
+                <div class="metric-label">Total Patients</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value">120</div>
+                <div class="metric-label">Outcome Positive</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value">30.0%</div>
+                <div class="metric-label">Prevalence</div>
+            </div>
+        </div>
+
+        <h3>Prediction Score Distribution</h3>
+        <div class="metric-grid">
+            <div class="metric-card">
+                <div class="metric-value">0.295</div>
+                <div class="metric-label">Mean Score</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value">0.279</div>
+                <div class="metric-label">Median Score</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value">0.154</div>
+                <div class="metric-label">Std Dev</div>
+            </div>
+        </div>
+
+        <h3>Characteristics by Group</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Attribute</th>
+                    <th>Group</th>
+                    <th>N</th>
+                    <th>%</th>
+                    <th>Outcome Rate</th>
+                    <th>Rate Ratio</th>
+                </tr>
+            </thead>
+            <tbody>
+                
+            <tr>
+                <td>race</td>
+                <td>Asian</td>
+                <td>99</td>
+                <td>24.8%</td>
+                <td>33.3%</td>
+                <td>1.32</td>
+            </tr>
+            
+            <tr>
+                <td>race</td>
+                <td>Black</td>
+                <td>91</td>
+                <td>22.8%</td>
+                <td>25.3%</td>
+                <td>1.00</td>
+            </tr>
+            
+            <tr>
+                <td>race</td>
+                <td>Hispanic</td>
+                <td>95</td>
+                <td>23.8%</td>
+                <td>36.8%</td>
+                <td>1.46</td>
+            </tr>
+            
+            <tr>
+                <td>race</td>
+                <td>White (ref)</td>
+                <td>115</td>
+                <td>28.7%</td>
+                <td>25.2%</td>
+                <td>1.00</td>
+            </tr>
+            
+            <tr>
+                <td>sex</td>
+                <td>Female</td>
+                <td>189</td>
+                <td>47.2%</td>
+                <td>34.4%</td>
+                <td>1.32</td>
+            </tr>
+            
+            <tr>
+                <td>sex</td>
+                <td>Male (ref)</td>
+                <td>211</td>
+                <td>52.8%</td>
+                <td>26.1%</td>
+                <td>1.00</td>
+            </tr>
+            
+            </tbody>
+        </table>
+    </section>
+    
+        
+    <section class="section">
+        <h2>Section 3: Overall Model Performance (TRIPOD+AI)</h2>
+
+        <h3>Discrimination: How Well Does the Model Separate Outcomes?</h3>
+        <div class="metric-grid">
+            <div class="metric-card">
+                <div class="metric-value">0.484</div>
+                <div class="metric-label">AUROC </div>
+                <div style="margin-top: 8px; font-size: 14px; color: #666;">
+                    <strong>Below standard</strong> (0.5=random, 1.0=perfect)
+                </div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value">0.292</div>
+                <div class="metric-label">AUPRC (Precision-Recall)</div>
+                <div style="margin-top: 8px; font-size: 14px; color: #666;">
+                    Area under precision-recall curve
+                </div>
+            </div>
+        </div>
+
+        <h3>Calibration: Do Predicted Risks Match Reality?</h3>
+        <div class="metric-grid">
+            <div class="metric-card">
+                <div class="metric-value">0.2368</div>
+                <div class="metric-label">Brier Score (lower is better)</div>
+                <div style="margin-top: 8px; font-size: 14px; color: #666;">
+                    <strong>Acceptable</strong> (&lt;0.15=excellent)
+                </div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value">0.01</div>
+                <div class="metric-label">Calibration Slope (ideal: 1.00)</div>
+                <div style="margin-top: 8px; font-size: 14px; color: #666;">
+                    <strong>May need recalibration</strong> (0.8-1.2=good)
+                </div>
+            </div>
+        </div>
+
+        <h3>Classification at Threshold = 0.50</h3>
+        <p style="color: #666; font-size: 14px; margin-bottom: 16px;">
+            At this risk cutoff, here's what happens to patients:
+        </p>
+        <div class="metric-grid">
+            <div class="metric-card">
+                <div class="metric-value">10.8%</div>
+                <div class="metric-label">Sensitivity (TPR)</div>
+                <div style="margin-top: 8px; font-size: 14px; color: #666;">
+                    % of actual cases correctly identified
+                </div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value">88.2%</div>
+                <div class="metric-label">Specificity (TNR)</div>
+                <div style="margin-top: 8px; font-size: 14px; color: #666;">
+                    % without condition correctly identified
+                </div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value">28.3%</div>
+                <div class="metric-label">PPV (Precision)</div>
+                <div style="margin-top: 8px; font-size: 14px; color: #666;">
+                    When flagged positive, % truly positive
+                </div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value">11.5%</div>
+                <div class="metric-label">% Flagged High Risk</div>
+                <div style="margin-top: 8px; font-size: 14px; color: #666;">
+                    Proportion identified for intervention
+                </div>
+            </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; margin-top: 20px;"><div><div>                            <div id="chart-auroc" class="plotly-graph-div" style="height:300px; width:100%;"></div>            <script type="text/javascript">                                    window.PLOTLYENV=window.PLOTLYENV || {};                                    if (document.getElementById("chart-auroc")) {                    Plotly.newPlot(                        "chart-auroc",                        [{"gauge":{"axis":{"range":[0.5,1],"tickfont":{"size":14},"tickformat":".1f"},"bar":{"color":"#D55E00"},"bgcolor":"white","bordercolor":"gray","borderwidth":2,"steps":[{"color":"#ffebee","range":[0.5,0.7]},{"color":"#fff3e0","range":[0.7,0.8]},{"color":"#e8f5e9","range":[0.8,1]}],"threshold":{"line":{"color":"black","width":4},"thickness":0.8,"value":0.7}},"mode":"gauge+number","number":{"font":{"color":"#D55E00","size":44},"valueformat":".2f"},"title":{"font":{"size":20},"text":"\u003cb\u003eAUROC\u003c\u002fb\u003e"},"value":0.4844345238095238,"type":"indicator"}],                        {"template":{"layout":{"colorway":["#0072B2","#E69F00","#009E73","#D55E00","#CC79A7","#56B4E9","#F0E442"],"font":{"color":"#191919","family":"Inter, -apple-system, BlinkMacSystemFont, sans-serif","size":11},"hoverlabel":{"bgcolor":"#FFFFFF","bordercolor":"#CCCCCC","font":{"color":"#191919","family":"Inter, -apple-system, BlinkMacSystemFont, sans-serif","size":11}},"legend":{"bgcolor":"rgba(255,255,255,0.9)","font":{"color":"#191919","size":10}},"margin":{"b":120,"l":80,"r":40,"t":80},"title":{"font":{"color":"#191919","family":"Georgia, 'Times New Roman', serif","size":18},"x":0,"xanchor":"left","y":0.98,"yanchor":"top"},"xaxis":{"linecolor":"#CCCCCC","linewidth":1,"showgrid":false,"showline":true,"tickfont":{"color":"#191919","size":10},"title":{"font":{"color":"#191919","size":11}},"zeroline":false},"yaxis":{"gridcolor":"#E3E2E0","gridwidth":1,"showgrid":true,"showline":false,"tickfont":{"color":"#191919","size":10},"title":{"font":{"color":"#191919","size":11}},"zeroline":false}}},"margin":{"l":20,"r":20,"t":70,"b":60},"height":300,"annotations":[{"font":{"color":"#D55E00","size":18},"showarrow":false,"text":"\u003cb\u003eREVIEW\u003c\u002fb\u003e","x":0.5,"y":-0.08},{"font":{"color":"#666","size":14},"showarrow":false,"text":"AUROC measures how well the model separates high-risk from low-risk patients. Think of it as the model's ability to rank patients correctly. Score of 0.5 = random guessing (coin flip). Score of 1.0 = perfect ranking. Healthcare standard: 0.7 or higher is acceptable, 0.8+ is strong.","x":0.5,"xanchor":"center","y":-0.22}]},                        {"responsive": true}                    )                };                            </script>        </div></div><div><div>                            <div id="chart-calibration" class="plotly-graph-div" style="height:320px; width:100%;"></div>            <script type="text/javascript">                                    window.PLOTLYENV=window.PLOTLYENV || {};                                    if (document.getElementById("chart-calibration")) {                    Plotly.newPlot(                        "chart-calibration",                        [{"line":{"color":"gray","dash":"dash"},"mode":"lines","name":"Perfect Calibration","showlegend":true,"x":[0,1],"y":[0,1],"type":"scatter"},{"line":{"color":"#0072B2","width":3},"marker":{"size":10},"mode":"lines+markers","name":"Model Calibration","showlegend":true,"x":[0.1,0.3,0.5,0.7,0.9],"y":[0,0,0,0,0],"type":"scatter"}],                        {"template":{"layout":{"colorway":["#0072B2","#E69F00","#009E73","#D55E00","#CC79A7","#56B4E9","#F0E442"],"font":{"color":"#191919","family":"Inter, -apple-system, BlinkMacSystemFont, sans-serif","size":11},"hoverlabel":{"bgcolor":"#FFFFFF","bordercolor":"#CCCCCC","font":{"color":"#191919","family":"Inter, -apple-system, BlinkMacSystemFont, sans-serif","size":11}},"legend":{"bgcolor":"rgba(255,255,255,0.9)","font":{"color":"#191919","size":10}},"margin":{"b":120,"l":80,"r":40,"t":80},"title":{"font":{"color":"#191919","family":"Georgia, 'Times New Roman', serif","size":18},"x":0,"xanchor":"left","y":0.98,"yanchor":"top"},"xaxis":{"linecolor":"#CCCCCC","linewidth":1,"showgrid":false,"showline":true,"tickfont":{"color":"#191919","size":10},"title":{"font":{"color":"#191919","size":11}},"zeroline":false},"yaxis":{"gridcolor":"#E3E2E0","gridwidth":1,"showgrid":true,"showline":false,"tickfont":{"color":"#191919","size":10},"title":{"font":{"color":"#191919","size":11}},"zeroline":false}}},"title":{"font":{"size":20},"text":"\u003cb\u003eCalibration\u003c\u002fb\u003e"},"xaxis":{"tickfont":{"size":14},"title":{"text":"Predicted Risk (what the model says)"},"range":[0,1],"tickformat":".0%"},"yaxis":{"tickfont":{"size":14},"title":{"text":"Observed Rate (what actually happened)"},"range":[0,1],"tickformat":".0%"},"margin":{"l":50,"r":20,"t":70,"b":70},"legend":{"font":{"size":14},"x":0.02,"y":0.98},"height":320,"annotations":[{"font":{"color":"#D55E00","size":16},"showarrow":false,"text":"\u003cb\u003eSlope: 0.01\u003c\u002fb\u003e (REVIEW)","x":0.98,"xanchor":"right","y":0.02,"yanchor":"bottom"},{"font":{"color":"#666","size":14},"showarrow":false,"text":"Calibration checks if predicted risks match actual outcomes. If the model predicts 20% risk for a group, do about 20% actually experience the outcome? Points closer to the diagonal line = more trustworthy risk estimates. Why it matters: Under\u002fover-estimating risk can lead to wrong treatment decisions.","x":0.5,"xanchor":"center","xref":"paper","y":-0.18,"yref":"paper"}]},                        {"responsive": true}                    )                };                            </script>        </div></div><div><div>                            <div id="chart-brier-score" class="plotly-graph-div" style="height:300px; width:100%;"></div>            <script type="text/javascript">                                    window.PLOTLYENV=window.PLOTLYENV || {};                                    if (document.getElementById("chart-brier-score")) {                    Plotly.newPlot(                        "chart-brier-score",                        [{"gauge":{"axis":{"range":[0,0.5],"tickfont":{"size":14},"tickformat":".2f"},"bar":{"color":"#C9B900"},"bgcolor":"white","bordercolor":"gray","borderwidth":2,"steps":[{"color":"#e8f5e9","range":[0,0.15]},{"color":"#fff3e0","range":[0.15,0.25]},{"color":"#ffebee","range":[0.25,0.5]}]},"mode":"gauge+number","number":{"font":{"color":"#C9B900","size":44},"valueformat":".3f"},"title":{"font":{"size":20},"text":"\u003cb\u003eBrier Score\u003c\u002fb\u003e"},"value":0.2368062806660575,"type":"indicator"}],                        {"template":{"layout":{"colorway":["#0072B2","#E69F00","#009E73","#D55E00","#CC79A7","#56B4E9","#F0E442"],"font":{"color":"#191919","family":"Inter, -apple-system, BlinkMacSystemFont, sans-serif","size":11},"hoverlabel":{"bgcolor":"#FFFFFF","bordercolor":"#CCCCCC","font":{"color":"#191919","family":"Inter, -apple-system, BlinkMacSystemFont, sans-serif","size":11}},"legend":{"bgcolor":"rgba(255,255,255,0.9)","font":{"color":"#191919","size":10}},"margin":{"b":120,"l":80,"r":40,"t":80},"title":{"font":{"color":"#191919","family":"Georgia, 'Times New Roman', serif","size":18},"x":0,"xanchor":"left","y":0.98,"yanchor":"top"},"xaxis":{"linecolor":"#CCCCCC","linewidth":1,"showgrid":false,"showline":true,"tickfont":{"color":"#191919","size":10},"title":{"font":{"color":"#191919","size":11}},"zeroline":false},"yaxis":{"gridcolor":"#E3E2E0","gridwidth":1,"showgrid":true,"showline":false,"tickfont":{"color":"#191919","size":10},"title":{"font":{"color":"#191919","size":11}},"zeroline":false}}},"margin":{"l":20,"r":20,"t":70,"b":60},"height":300,"annotations":[{"font":{"color":"#C9B900","size":18},"showarrow":false,"text":"\u003cb\u003eREVIEW\u003c\u002fb\u003e (lower is better)","x":0.5,"y":-0.08},{"font":{"color":"#666","size":14},"showarrow":false,"text":"Brier Score measures overall prediction accuracy (0 = perfect, 0.25 = poor). Lower is better. Think of it as the 'error' in risk predictions. Score \u003c0.15 = excellent calibration. Score 0.15-0.25 = acceptable. Score \u003e0.25 = needs improvement.","x":0.5,"xanchor":"center","y":-0.22}]},                        {"responsive": true}                    )                };                            </script>        </div></div><div><div>                            <div id="chart-classification" class="plotly-graph-div" style="height:300px; width:100%;"></div>            <script type="text/javascript">                                    window.PLOTLYENV=window.PLOTLYENV || {};                                    if (document.getElementById("chart-classification")) {                    Plotly.newPlot(                        "chart-classification",                        [{"marker":{"color":["#D55E00","#009E73","#D55E00"]},"text":["\u003cb\u003e11%\u003c\u002fb\u003e","\u003cb\u003e88%\u003c\u002fb\u003e","\u003cb\u003e28%\u003c\u002fb\u003e"],"textfont":{"size":18},"textposition":"outside","x":["Sensitivity","Specificity","PPV"],"y":[10.833333333333334,88.21428571428571,28.26086956521739],"type":"bar"}],                        {"template":{"layout":{"colorway":["#0072B2","#E69F00","#009E73","#D55E00","#CC79A7","#56B4E9","#F0E442"],"font":{"color":"#191919","family":"Inter, -apple-system, BlinkMacSystemFont, sans-serif","size":11},"hoverlabel":{"bgcolor":"#FFFFFF","bordercolor":"#CCCCCC","font":{"color":"#191919","family":"Inter, -apple-system, BlinkMacSystemFont, sans-serif","size":11}},"legend":{"bgcolor":"rgba(255,255,255,0.9)","font":{"color":"#191919","size":10}},"margin":{"b":120,"l":80,"r":40,"t":80},"title":{"font":{"color":"#191919","family":"Georgia, 'Times New Roman', serif","size":18},"x":0,"xanchor":"left","y":0.98,"yanchor":"top"},"xaxis":{"linecolor":"#CCCCCC","linewidth":1,"showgrid":false,"showline":true,"tickfont":{"color":"#191919","size":10},"title":{"font":{"color":"#191919","size":11}},"zeroline":false},"yaxis":{"gridcolor":"#E3E2E0","gridwidth":1,"showgrid":true,"showline":false,"tickfont":{"color":"#191919","size":10},"title":{"font":{"color":"#191919","size":11}},"zeroline":false}}},"title":{"font":{"size":20},"text":"\u003cb\u003eClassification Metrics at Threshold 0.50\u003c\u002fb\u003e"},"xaxis":{"tickfont":{"size":14},"title":{"text":"Performance Metric"}},"yaxis":{"tickfont":{"size":14},"title":{"text":"Percentage of Patients"},"range":[0,110],"ticksuffix":"%"},"margin":{"l":40,"r":20,"t":70,"b":60},"height":300,"showlegend":false,"annotations":[{"font":{"color":"#666","size":14},"showarrow":false,"text":"At the chosen risk threshold, these metrics show what happens to patients: Sensitivity = % of actual cases correctly identified. Specificity = % without the condition correctly identified. PPV = When flagged positive, % who actually have the condition.","x":0.5,"xanchor":"center","xref":"paper","y":-0.18,"yref":"paper"}]},                        {"responsive": true}                    )                };                            </script>        </div></div></div>
+    </section>
+    
+        
+    <section class="section">
+        <h2>Section 4: Subgroup Performance</h2>
+
+        <p style="color: #666; font-size: 16px; margin-bottom: 20px;">
+            <strong>What to look for:</strong> Performance should be similar across all demographic groups.
+            Large differences in AUROC (&gt;0.05) or TPR/FPR (&gt;10 percentage points) may indicate fairness concerns.
+        </p>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Attribute</th>
+                    <th>Group</th>
+                    <th>Sample Size</th>
+                    <th>AUROC<br><span style="font-weight: normal; font-size: 12px;">(accuracy)</span></th>
+                    <th>TPR<br><span style="font-weight: normal; font-size: 12px;">(sensitivity)</span></th>
+                    <th>FPR<br><span style="font-weight: normal; font-size: 12px;">(false alarms)</span></th>
+                </tr>
+            </thead>
+            <tbody>
+                
+            <tr>
+                <td>race</td>
+                <td>groups</td>
+                <td>0</td>
+                <td>N/A</td>
+                <td>N/A</td>
+                <td>N/A</td>
+            </tr>
+            
+            <tr>
+                <td>race</td>
+                <td>disparities</td>
+                <td>0</td>
+                <td>N/A</td>
+                <td>N/A</td>
+                <td>N/A</td>
+            </tr>
+            
+            <tr>
+                <td>sex</td>
+                <td>groups</td>
+                <td>0</td>
+                <td>N/A</td>
+                <td>N/A</td>
+                <td>N/A</td>
+            </tr>
+            
+            <tr>
+                <td>sex</td>
+                <td>disparities</td>
+                <td>0</td>
+                <td>N/A</td>
+                <td>N/A</td>
+                <td>N/A</td>
+            </tr>
+            
+            </tbody>
+        </table>
+
+        <div style="margin-top: 20px; padding: 16px; background: #f8f9fa; border-left: 4px solid #0072B2; border-radius: 4px;">
+            <h4 style="margin-top: 0; color: #0072B2;">Interpreting These Metrics:</h4>
+            <ul style="margin-bottom: 0;">
+                <li><strong>AUROC:</strong> Model's ability to rank patients (0.7+ acceptable, 0.8+ strong)</li>
+                <li><strong>TPR (Sensitivity):</strong> % of actual cases caught by the model (higher is better)</li>
+                <li><strong>FPR:</strong> % incorrectly flagged (lower is better, means fewer false alarms)</li>
+                <li><strong>(ref):</strong> Reference group used for fairness comparisons</li>
+            </ul>
+        </div>
+
+        <h3 style="margin-top: 30px; color: #2c5282;">Race</h3><div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; margin-top: 15px;"><div><div>                            <div id="chart-race-auroc-by-subgroup" class="plotly-graph-div" style="height:280px; width:100%;"></div>            <script type="text/javascript">                                    window.PLOTLYENV=window.PLOTLYENV || {};                                    if (document.getElementById("chart-race-auroc-by-subgroup")) {                    Plotly.newPlot(                        "chart-race-auroc-by-subgroup",                        [{"marker":{"color":["#E69F00","#E69F00","#E69F00","#0072B2"]},"text":["\u003cb\u003e0.39\u003c\u002fb\u003e","\u003cb\u003e0.40\u003c\u002fb\u003e","\u003cb\u003e0.56\u003c\u002fb\u003e","\u003cb\u003e0.55\u003c\u002fb\u003e"],"textfont":{"size":14},"textposition":"outside","x":["Asian","Black","Hispanic","White"],"y":[0.38980716253443526,0.40153452685422,0.5561904761904761,0.5465116279069768],"type":"bar"}],                        {"template":{"layout":{"colorway":["#0072B2","#E69F00","#009E73","#D55E00","#CC79A7","#56B4E9","#F0E442"],"font":{"color":"#191919","family":"Inter, -apple-system, BlinkMacSystemFont, sans-serif","size":11},"hoverlabel":{"bgcolor":"#FFFFFF","bordercolor":"#CCCCCC","font":{"color":"#191919","family":"Inter, -apple-system, BlinkMacSystemFont, sans-serif","size":11}},"legend":{"bgcolor":"rgba(255,255,255,0.9)","font":{"color":"#191919","size":10}},"margin":{"b":120,"l":80,"r":40,"t":80},"title":{"font":{"color":"#191919","family":"Georgia, 'Times New Roman', serif","size":18},"x":0,"xanchor":"left","y":0.98,"yanchor":"top"},"xaxis":{"linecolor":"#CCCCCC","linewidth":1,"showgrid":false,"showline":true,"tickfont":{"color":"#191919","size":10},"title":{"font":{"color":"#191919","size":11}},"zeroline":false},"yaxis":{"gridcolor":"#E3E2E0","gridwidth":1,"showgrid":true,"showline":false,"tickfont":{"color":"#191919","size":10},"title":{"font":{"color":"#191919","size":11}},"zeroline":false}}},"shapes":[{"line":{"color":"#D55E00","dash":"dash"},"type":"line","x0":0,"x1":1,"xref":"x domain","y0":0.7,"y1":0.7,"yref":"y"}],"annotations":[{"font":{"size":14,"color":"#666"},"showarrow":false,"text":"AUROC by Subgroup: Does the model perform equally well across all demographic groups? All bars should be similar height (difference \u003c0.05 is ideal). Lower bars mean the model is less accurate for that group. Why it matters: We want the model to work well for everyone, not just some groups.","x":0.5,"xanchor":"center","xref":"paper","y":-0.28,"yanchor":"bottom","yref":"paper"}],"title":{"font":{"size":16},"text":"\u003cb\u003eModel Accuracy (AUROC) by Demographic Group\u003c\u002fb\u003e"},"xaxis":{"tickfont":{"size":14},"title":{"text":"Demographic Group","font":{"size":14}},"tickangle":0},"yaxis":{"tickfont":{"size":14},"title":{"text":"AUROC (Model Accuracy Score)","font":{"size":14}},"range":[0.5,1],"ticksuffix":""},"margin":{"l":60,"r":20,"t":55,"b":90},"height":280,"showlegend":false},                        {"responsive": true}                    )                };                            </script>        </div></div><div><div>                            <div id="chart-race-sensitivity-by-subgroup" class="plotly-graph-div" style="height:280px; width:100%;"></div>            <script type="text/javascript">                                    window.PLOTLYENV=window.PLOTLYENV || {};                                    if (document.getElementById("chart-race-sensitivity-by-subgroup")) {                    Plotly.newPlot(                        "chart-race-sensitivity-by-subgroup",                        [{"marker":{"color":["#E69F00","#E69F00","#E69F00","#0072B2"]},"text":["\u003cb\u003e9%\u003c\u002fb\u003e","\u003cb\u003e4%\u003c\u002fb\u003e","\u003cb\u003e20%\u003c\u002fb\u003e","\u003cb\u003e7%\u003c\u002fb\u003e"],"textfont":{"size":14},"textposition":"outside","x":["Asian","Black","Hispanic","White"],"y":[9.090909090909092,4.3478260869565215,20.0,6.896551724137931],"type":"bar"}],                        {"template":{"layout":{"colorway":["#0072B2","#E69F00","#009E73","#D55E00","#CC79A7","#56B4E9","#F0E442"],"font":{"color":"#191919","family":"Inter, -apple-system, BlinkMacSystemFont, sans-serif","size":11},"hoverlabel":{"bgcolor":"#FFFFFF","bordercolor":"#CCCCCC","font":{"color":"#191919","family":"Inter, -apple-system, BlinkMacSystemFont, sans-serif","size":11}},"legend":{"bgcolor":"rgba(255,255,255,0.9)","font":{"color":"#191919","size":10}},"margin":{"b":120,"l":80,"r":40,"t":80},"title":{"font":{"color":"#191919","family":"Georgia, 'Times New Roman', serif","size":18},"x":0,"xanchor":"left","y":0.98,"yanchor":"top"},"xaxis":{"linecolor":"#CCCCCC","linewidth":1,"showgrid":false,"showline":true,"tickfont":{"color":"#191919","size":10},"title":{"font":{"color":"#191919","size":11}},"zeroline":false},"yaxis":{"gridcolor":"#E3E2E0","gridwidth":1,"showgrid":true,"showline":false,"tickfont":{"color":"#191919","size":10},"title":{"font":{"color":"#191919","size":11}},"zeroline":false}}},"title":{"font":{"size":16},"text":"\u003cb\u003eSensitivity: % of Actual Cases Detected by Group\u003c\u002fb\u003e"},"xaxis":{"tickfont":{"size":14},"title":{"text":"Demographic Group","font":{"size":14}},"tickangle":0},"yaxis":{"tickfont":{"size":14},"title":{"text":"True Positive Rate (%)","font":{"size":14}},"range":[0,100],"ticksuffix":"%"},"margin":{"l":60,"r":20,"t":55,"b":90},"height":280,"showlegend":false,"annotations":[{"font":{"color":"#666","size":14},"showarrow":false,"text":"Sensitivity (True Positive Rate): Of patients who actually develop the outcome, what percentage does the model correctly identify in each group? Large differences mean the model 'misses' more cases in certain groups. Fairness goal: Differences between groups should be \u003c10 percentage points.","x":0.5,"xanchor":"center","xref":"paper","y":-0.28,"yref":"paper"}]},                        {"responsive": true}                    )                };                            </script>        </div></div><div><div>                            <div id="chart-race-fpr-by-subgroup" class="plotly-graph-div" style="height:280px; width:100%;"></div>            <script type="text/javascript">                                    window.PLOTLYENV=window.PLOTLYENV || {};                                    if (document.getElementById("chart-race-fpr-by-subgroup")) {                    Plotly.newPlot(                        "chart-race-fpr-by-subgroup",                        [{"marker":{"color":["#E69F00","#E69F00","#E69F00","#0072B2"]},"text":["\u003cb\u003e15%\u003c\u002fb\u003e","\u003cb\u003e10%\u003c\u002fb\u003e","\u003cb\u003e10%\u003c\u002fb\u003e","\u003cb\u003e12%\u003c\u002fb\u003e"],"textfont":{"size":14},"textposition":"outside","x":["Asian","Black","Hispanic","White"],"y":[15.151515151515152,10.294117647058822,10.0,11.627906976744185],"type":"bar"}],                        {"template":{"layout":{"colorway":["#0072B2","#E69F00","#009E73","#D55E00","#CC79A7","#56B4E9","#F0E442"],"font":{"color":"#191919","family":"Inter, -apple-system, BlinkMacSystemFont, sans-serif","size":11},"hoverlabel":{"bgcolor":"#FFFFFF","bordercolor":"#CCCCCC","font":{"color":"#191919","family":"Inter, -apple-system, BlinkMacSystemFont, sans-serif","size":11}},"legend":{"bgcolor":"rgba(255,255,255,0.9)","font":{"color":"#191919","size":10}},"margin":{"b":120,"l":80,"r":40,"t":80},"title":{"font":{"color":"#191919","family":"Georgia, 'Times New Roman', serif","size":18},"x":0,"xanchor":"left","y":0.98,"yanchor":"top"},"xaxis":{"linecolor":"#CCCCCC","linewidth":1,"showgrid":false,"showline":true,"tickfont":{"color":"#191919","size":10},"title":{"font":{"color":"#191919","size":11}},"zeroline":false},"yaxis":{"gridcolor":"#E3E2E0","gridwidth":1,"showgrid":true,"showline":false,"tickfont":{"color":"#191919","size":10},"title":{"font":{"color":"#191919","size":11}},"zeroline":false}}},"title":{"font":{"size":16},"text":"\u003cb\u003eFalse Alarms: % Incorrectly Flagged by Group\u003c\u002fb\u003e"},"xaxis":{"tickfont":{"size":14},"title":{"text":"Demographic Group","font":{"size":14}},"tickangle":0},"yaxis":{"tickfont":{"size":14},"title":{"text":"False Positive Rate (%)","font":{"size":14}},"range":[0,50],"ticksuffix":"%"},"margin":{"l":60,"r":20,"t":55,"b":90},"height":280,"showlegend":false,"annotations":[{"font":{"color":"#666","size":14},"showarrow":false,"text":"False Positive Rate: Of patients who DON'T have the outcome, what percentage are incorrectly flagged as high-risk in each group? Lower is better (fewer false alarms). Fairness concern: Higher FPR means a group gets unnecessary interventions\u002fworry.","x":0.5,"xanchor":"center","xref":"paper","y":-0.28,"yref":"paper"}]},                        {"responsive": true}                    )                };                            </script>        </div></div><div><div>                            <div id="chart-race-selection-rate-by-subgroup" class="plotly-graph-div" style="height:280px; width:100%;"></div>            <script type="text/javascript">                                    window.PLOTLYENV=window.PLOTLYENV || {};                                    if (document.getElementById("chart-race-selection-rate-by-subgroup")) {                    Plotly.newPlot(                        "chart-race-selection-rate-by-subgroup",                        [{"marker":{"color":["#E69F00","#E69F00","#E69F00","#0072B2"]},"text":["\u003cb\u003e13%\u003c\u002fb\u003e","\u003cb\u003e9%\u003c\u002fb\u003e","\u003cb\u003e14%\u003c\u002fb\u003e","\u003cb\u003e10%\u003c\u002fb\u003e"],"textfont":{"size":14},"textposition":"outside","x":["Asian","Black","Hispanic","White"],"y":[13.131313131313133,8.791208791208792,13.684210526315791,10.434782608695652],"type":"bar"}],                        {"template":{"layout":{"colorway":["#0072B2","#E69F00","#009E73","#D55E00","#CC79A7","#56B4E9","#F0E442"],"font":{"color":"#191919","family":"Inter, -apple-system, BlinkMacSystemFont, sans-serif","size":11},"hoverlabel":{"bgcolor":"#FFFFFF","bordercolor":"#CCCCCC","font":{"color":"#191919","family":"Inter, -apple-system, BlinkMacSystemFont, sans-serif","size":11}},"legend":{"bgcolor":"rgba(255,255,255,0.9)","font":{"color":"#191919","size":10}},"margin":{"b":120,"l":80,"r":40,"t":80},"title":{"font":{"color":"#191919","family":"Georgia, 'Times New Roman', serif","size":18},"x":0,"xanchor":"left","y":0.98,"yanchor":"top"},"xaxis":{"linecolor":"#CCCCCC","linewidth":1,"showgrid":false,"showline":true,"tickfont":{"color":"#191919","size":10},"title":{"font":{"color":"#191919","size":11}},"zeroline":false},"yaxis":{"gridcolor":"#E3E2E0","gridwidth":1,"showgrid":true,"showline":false,"tickfont":{"color":"#191919","size":10},"title":{"font":{"color":"#191919","size":11}},"zeroline":false}}},"title":{"font":{"size":16},"text":"\u003cb\u003eIntervention Rate: % Flagged as High-Risk by Group\u003c\u002fb\u003e"},"xaxis":{"tickfont":{"size":14},"title":{"text":"Demographic Group","font":{"size":14}},"tickangle":0},"yaxis":{"tickfont":{"size":14},"title":{"text":"Selection Rate (% flagged)","font":{"size":14}},"range":[0,100],"ticksuffix":"%"},"margin":{"l":60,"r":20,"t":55,"b":90},"height":280,"showlegend":false,"annotations":[{"font":{"color":"#666","size":14},"showarrow":false,"text":"Selection Rate: What percentage of each group is flagged as 'high-risk' by the model? This shows which groups the model identifies for intervention. Large differences may indicate disparate treatment even if clinically justified. Consider: Should intervention rates differ by demographics?","x":0.5,"xanchor":"center","xref":"paper","y":-0.28,"yref":"paper"}]},                        {"responsive": true}                    )                };                            </script>        </div></div></div><h3 style="margin-top: 30px; color: #2c5282;">Sex</h3><div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; margin-top: 15px;"><div><div>                            <div id="chart-sex-auroc-by-subgroup" class="plotly-graph-div" style="height:280px; width:100%;"></div>            <script type="text/javascript">                                    window.PLOTLYENV=window.PLOTLYENV || {};                                    if (document.getElementById("chart-sex-auroc-by-subgroup")) {                    Plotly.newPlot(                        "chart-sex-auroc-by-subgroup",                        [{"marker":{"color":["#E69F00","#0072B2"]},"text":["\u003cb\u003e0.50\u003c\u002fb\u003e","\u003cb\u003e0.47\u003c\u002fb\u003e"],"textfont":{"size":14},"textposition":"outside","x":["Female","Male"],"y":[0.4995037220843672,0.4693473193473193],"type":"bar"}],                        {"template":{"layout":{"colorway":["#0072B2","#E69F00","#009E73","#D55E00","#CC79A7","#56B4E9","#F0E442"],"font":{"color":"#191919","family":"Inter, -apple-system, BlinkMacSystemFont, sans-serif","size":11},"hoverlabel":{"bgcolor":"#FFFFFF","bordercolor":"#CCCCCC","font":{"color":"#191919","family":"Inter, -apple-system, BlinkMacSystemFont, sans-serif","size":11}},"legend":{"bgcolor":"rgba(255,255,255,0.9)","font":{"color":"#191919","size":10}},"margin":{"b":120,"l":80,"r":40,"t":80},"title":{"font":{"color":"#191919","family":"Georgia, 'Times New Roman', serif","size":18},"x":0,"xanchor":"left","y":0.98,"yanchor":"top"},"xaxis":{"linecolor":"#CCCCCC","linewidth":1,"showgrid":false,"showline":true,"tickfont":{"color":"#191919","size":10},"title":{"font":{"color":"#191919","size":11}},"zeroline":false},"yaxis":{"gridcolor":"#E3E2E0","gridwidth":1,"showgrid":true,"showline":false,"tickfont":{"color":"#191919","size":10},"title":{"font":{"color":"#191919","size":11}},"zeroline":false}}},"shapes":[{"line":{"color":"#D55E00","dash":"dash"},"type":"line","x0":0,"x1":1,"xref":"x domain","y0":0.7,"y1":0.7,"yref":"y"}],"annotations":[{"font":{"size":14,"color":"#666"},"showarrow":false,"text":"AUROC by Subgroup: Does the model perform equally well across all demographic groups? All bars should be similar height (difference \u003c0.05 is ideal). Lower bars mean the model is less accurate for that group. Why it matters: We want the model to work well for everyone, not just some groups.","x":0.5,"xanchor":"center","xref":"paper","y":-0.28,"yanchor":"bottom","yref":"paper"}],"title":{"font":{"size":16},"text":"\u003cb\u003eModel Accuracy (AUROC) by Demographic Group\u003c\u002fb\u003e"},"xaxis":{"tickfont":{"size":14},"title":{"text":"Demographic Group","font":{"size":14}},"tickangle":0},"yaxis":{"tickfont":{"size":14},"title":{"text":"AUROC (Model Accuracy Score)","font":{"size":14}},"range":[0.5,1],"ticksuffix":""},"margin":{"l":60,"r":20,"t":55,"b":90},"height":280,"showlegend":false},                        {"responsive": true}                    )                };                            </script>        </div></div><div><div>                            <div id="chart-sex-sensitivity-by-subgroup" class="plotly-graph-div" style="height:280px; width:100%;"></div>            <script type="text/javascript">                                    window.PLOTLYENV=window.PLOTLYENV || {};                                    if (document.getElementById("chart-sex-sensitivity-by-subgroup")) {                    Plotly.newPlot(                        "chart-sex-sensitivity-by-subgroup",                        [{"marker":{"color":["#E69F00","#0072B2"]},"text":["\u003cb\u003e9%\u003c\u002fb\u003e","\u003cb\u003e13%\u003c\u002fb\u003e"],"textfont":{"size":14},"textposition":"outside","x":["Female","Male"],"y":[9.230769230769232,12.727272727272727],"type":"bar"}],                        {"template":{"layout":{"colorway":["#0072B2","#E69F00","#009E73","#D55E00","#CC79A7","#56B4E9","#F0E442"],"font":{"color":"#191919","family":"Inter, -apple-system, BlinkMacSystemFont, sans-serif","size":11},"hoverlabel":{"bgcolor":"#FFFFFF","bordercolor":"#CCCCCC","font":{"color":"#191919","family":"Inter, -apple-system, BlinkMacSystemFont, sans-serif","size":11}},"legend":{"bgcolor":"rgba(255,255,255,0.9)","font":{"color":"#191919","size":10}},"margin":{"b":120,"l":80,"r":40,"t":80},"title":{"font":{"color":"#191919","family":"Georgia, 'Times New Roman', serif","size":18},"x":0,"xanchor":"left","y":0.98,"yanchor":"top"},"xaxis":{"linecolor":"#CCCCCC","linewidth":1,"showgrid":false,"showline":true,"tickfont":{"color":"#191919","size":10},"title":{"font":{"color":"#191919","size":11}},"zeroline":false},"yaxis":{"gridcolor":"#E3E2E0","gridwidth":1,"showgrid":true,"showline":false,"tickfont":{"color":"#191919","size":10},"title":{"font":{"color":"#191919","size":11}},"zeroline":false}}},"title":{"font":{"size":16},"text":"\u003cb\u003eSensitivity: % of Actual Cases Detected by Group\u003c\u002fb\u003e"},"xaxis":{"tickfont":{"size":14},"title":{"text":"Demographic Group","font":{"size":14}},"tickangle":0},"yaxis":{"tickfont":{"size":14},"title":{"text":"True Positive Rate (%)","font":{"size":14}},"range":[0,100],"ticksuffix":"%"},"margin":{"l":60,"r":20,"t":55,"b":90},"height":280,"showlegend":false,"annotations":[{"font":{"color":"#666","size":14},"showarrow":false,"text":"Sensitivity (True Positive Rate): Of patients who actually develop the outcome, what percentage does the model correctly identify in each group? Large differences mean the model 'misses' more cases in certain groups. Fairness goal: Differences between groups should be \u003c10 percentage points.","x":0.5,"xanchor":"center","xref":"paper","y":-0.28,"yref":"paper"}]},                        {"responsive": true}                    )                };                            </script>        </div></div><div><div>                            <div id="chart-sex-fpr-by-subgroup" class="plotly-graph-div" style="height:280px; width:100%;"></div>            <script type="text/javascript">                                    window.PLOTLYENV=window.PLOTLYENV || {};                                    if (document.getElementById("chart-sex-fpr-by-subgroup")) {                    Plotly.newPlot(                        "chart-sex-fpr-by-subgroup",                        [{"marker":{"color":["#E69F00","#0072B2"]},"text":["\u003cb\u003e10%\u003c\u002fb\u003e","\u003cb\u003e13%\u003c\u002fb\u003e"],"textfont":{"size":14},"textposition":"outside","x":["Female","Male"],"y":[10.483870967741936,12.82051282051282],"type":"bar"}],                        {"template":{"layout":{"colorway":["#0072B2","#E69F00","#009E73","#D55E00","#CC79A7","#56B4E9","#F0E442"],"font":{"color":"#191919","family":"Inter, -apple-system, BlinkMacSystemFont, sans-serif","size":11},"hoverlabel":{"bgcolor":"#FFFFFF","bordercolor":"#CCCCCC","font":{"color":"#191919","family":"Inter, -apple-system, BlinkMacSystemFont, sans-serif","size":11}},"legend":{"bgcolor":"rgba(255,255,255,0.9)","font":{"color":"#191919","size":10}},"margin":{"b":120,"l":80,"r":40,"t":80},"title":{"font":{"color":"#191919","family":"Georgia, 'Times New Roman', serif","size":18},"x":0,"xanchor":"left","y":0.98,"yanchor":"top"},"xaxis":{"linecolor":"#CCCCCC","linewidth":1,"showgrid":false,"showline":true,"tickfont":{"color":"#191919","size":10},"title":{"font":{"color":"#191919","size":11}},"zeroline":false},"yaxis":{"gridcolor":"#E3E2E0","gridwidth":1,"showgrid":true,"showline":false,"tickfont":{"color":"#191919","size":10},"title":{"font":{"color":"#191919","size":11}},"zeroline":false}}},"title":{"font":{"size":16},"text":"\u003cb\u003eFalse Alarms: % Incorrectly Flagged by Group\u003c\u002fb\u003e"},"xaxis":{"tickfont":{"size":14},"title":{"text":"Demographic Group","font":{"size":14}},"tickangle":0},"yaxis":{"tickfont":{"size":14},"title":{"text":"False Positive Rate (%)","font":{"size":14}},"range":[0,50],"ticksuffix":"%"},"margin":{"l":60,"r":20,"t":55,"b":90},"height":280,"showlegend":false,"annotations":[{"font":{"color":"#666","size":14},"showarrow":false,"text":"False Positive Rate: Of patients who DON'T have the outcome, what percentage are incorrectly flagged as high-risk in each group? Lower is better (fewer false alarms). Fairness concern: Higher FPR means a group gets unnecessary interventions\u002fworry.","x":0.5,"xanchor":"center","xref":"paper","y":-0.28,"yref":"paper"}]},                        {"responsive": true}                    )                };                            </script>        </div></div><div><div>                            <div id="chart-sex-selection-rate-by-subgroup" class="plotly-graph-div" style="height:280px; width:100%;"></div>            <script type="text/javascript">                                    window.PLOTLYENV=window.PLOTLYENV || {};                                    if (document.getElementById("chart-sex-selection-rate-by-subgroup")) {                    Plotly.newPlot(                        "chart-sex-selection-rate-by-subgroup",                        [{"marker":{"color":["#E69F00","#0072B2"]},"text":["\u003cb\u003e10%\u003c\u002fb\u003e","\u003cb\u003e13%\u003c\u002fb\u003e"],"textfont":{"size":14},"textposition":"outside","x":["Female","Male"],"y":[10.052910052910052,12.796208530805686],"type":"bar"}],                        {"template":{"layout":{"colorway":["#0072B2","#E69F00","#009E73","#D55E00","#CC79A7","#56B4E9","#F0E442"],"font":{"color":"#191919","family":"Inter, -apple-system, BlinkMacSystemFont, sans-serif","size":11},"hoverlabel":{"bgcolor":"#FFFFFF","bordercolor":"#CCCCCC","font":{"color":"#191919","family":"Inter, -apple-system, BlinkMacSystemFont, sans-serif","size":11}},"legend":{"bgcolor":"rgba(255,255,255,0.9)","font":{"color":"#191919","size":10}},"margin":{"b":120,"l":80,"r":40,"t":80},"title":{"font":{"color":"#191919","family":"Georgia, 'Times New Roman', serif","size":18},"x":0,"xanchor":"left","y":0.98,"yanchor":"top"},"xaxis":{"linecolor":"#CCCCCC","linewidth":1,"showgrid":false,"showline":true,"tickfont":{"color":"#191919","size":10},"title":{"font":{"color":"#191919","size":11}},"zeroline":false},"yaxis":{"gridcolor":"#E3E2E0","gridwidth":1,"showgrid":true,"showline":false,"tickfont":{"color":"#191919","size":10},"title":{"font":{"color":"#191919","size":11}},"zeroline":false}}},"title":{"font":{"size":16},"text":"\u003cb\u003eIntervention Rate: % Flagged as High-Risk by Group\u003c\u002fb\u003e"},"xaxis":{"tickfont":{"size":14},"title":{"text":"Demographic Group","font":{"size":14}},"tickangle":0},"yaxis":{"tickfont":{"size":14},"title":{"text":"Selection Rate (% flagged)","font":{"size":14}},"range":[0,100],"ticksuffix":"%"},"margin":{"l":60,"r":20,"t":55,"b":90},"height":280,"showlegend":false,"annotations":[{"font":{"color":"#666","size":14},"showarrow":false,"text":"Selection Rate: What percentage of each group is flagged as 'high-risk' by the model? This shows which groups the model identifies for intervention. Large differences may indicate disparate treatment even if clinically justified. Consider: Should intervention rates differ by demographics?","x":0.5,"xanchor":"center","xref":"paper","y":-0.28,"yref":"paper"}]},                        {"responsive": true}                    )                };                            </script>        </div></div></div>
+    </section>
+    
+        
+    <section class="section">
+        <h2>Section 5: Fairness Assessment</h2>
+
+        <h3>Selected Fairness Metric</h3>
+        <p><strong>Primary Metric:</strong> equalized_odds</p>
+        <p><strong>Justification:</strong> Verifying static chart rendering in PDFs</p>
+
+        <h3>Fairness Metrics by Attribute</h3>
+        <p style="color: #666; font-size: 16px; margin-bottom: 16px;">
+            <strong>What to look for:</strong> Differences less than 0.10 (10 percentage points) are typically acceptable.
+            Larger differences may indicate the model treats groups differently.
+        </p>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Attribute</th>
+                    <th>TPR Difference<br><span style="font-weight: normal; font-size: 12px;">(Equal Opportunity)</span></th>
+                    <th>Status</th>
+                    <th>Equalized Odds Diff<br><span style="font-weight: normal; font-size: 12px;">(TPR + FPR)</span></th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                
+        <tr>
+            <td>race</td>
+            <td>0.131</td>
+            <td class="fail">FLAG</td>
+            <td>0.131</td>
+            <td class="fail">FLAG</td>
+        </tr>
+        
+        <tr>
+            <td>sex</td>
+            <td>0.035</td>
+            <td class="pass">PASS</td>
+            <td>0.035</td>
+            <td class="pass">PASS</td>
+        </tr>
+        
+            </tbody>
+        </table>
+
+        <div style="margin-top: 20px; padding: 16px; background: #fffdf0; border-left: 4px solid #F0E442; border-radius: 4px;">
+            <h4 style="margin-top: 0; color: #856404;">Understanding Fairness Metrics:</h4>
+            <ul style="margin-bottom: 0;">
+                <li><strong>TPR Difference (Equal Opportunity):</strong> Do all groups have similar rates of correctly identified cases?
+                    Large differences mean the model "misses" more cases in certain groups.</li>
+                <li><strong>Equalized Odds:</strong> Combines both true positive rate and false positive rate differences.
+                    Measures overall fairness in both detecting cases and avoiding false alarms.</li>
+                <li><strong>Impossibility Theorem:</strong> When base rates (prevalence) differ between groups,
+                    no model can satisfy all fairness criteria simultaneously. Trade-offs are necessary.</li>
+                <li><strong>Threshold:</strong> Differences &lt;0.10 are generally acceptable in healthcare AI.</li>
+            </ul>
+        </div>
+    </section>
+    
+        
+    <section class="section">
+        <h2>Section 6: Flags and Warnings</h2>
+        
+        <div class="flag-item flag-warning">
+            <strong>WARNING:</strong> Subgroup n=99 &lt; 100
+            <br><small>Small sample size may lead to unstable estimates for race:Asian</small>
+        </div>
+        
+        <div class="flag-item flag-warning">
+            <strong>WARNING:</strong> Subgroup n=91 &lt; 100
+            <br><small>Small sample size may lead to unstable estimates for race:Black</small>
+        </div>
+        
+        <div class="flag-item flag-warning">
+            <strong>WARNING:</strong> Subgroup n=95 &lt; 100
+            <br><small>Small sample size may lead to unstable estimates for race:Hispanic</small>
+        </div>
+        
+        <div class="flag-item flag-warning">
+            <strong>WARNING:</strong> Demographic parity ratio 1.26 outside [0.8, 1.25]
+            <br><small>Selection rates differ significantly between Asian and reference</small>
+        </div>
+        
+        <div class="flag-item flag-warning">
+            <strong>WARNING:</strong> Demographic parity ratio 1.31 outside [0.8, 1.25]
+            <br><small>Selection rates differ significantly between Hispanic and reference</small>
+        </div>
+        
+        <div class="flag-item flag-warning">
+            <strong>WARNING:</strong> Equalized odds difference 0.131 &gt; 0.1
+            <br><small>TPR/FPR differs significantly between Hispanic and reference</small>
+        </div>
+        
+        <div class="flag-item flag-warning">
+            <strong>WARNING:</strong> Demographic parity ratio 0.79 outside [0.8, 1.25]
+            <br><small>Selection rates differ significantly between Female and reference</small>
+        </div>
+        
+    </section>
+    
+        
+    <section class="section governance-block">
+        <h2>Section 7: Governance Decision</h2>
+
+        <p><strong>Model:</strong> Test Model - Chart Verification v1.0.0</p>
+        <p><strong>Intended Use:</strong> Not specified</p>
+        <p><strong>Intended Population:</strong> Not specified</p>
+        <p><strong>Advisory Status:</strong> CONDITIONAL</p>
+
+        <h3>Decision</h3>
+        <p>
+            <input type="checkbox" id="approve"> <label for="approve">APPROVE for deployment</label><br>
+            <input type="checkbox" id="conditional"> <label for="conditional">APPROVE with conditions</label><br>
+            <input type="checkbox" id="defer"> <label for="defer">DEFER pending additional review</label><br>
+            <input type="checkbox" id="reject"> <label for="reject">DO NOT APPROVE</label>
+        </p>
+
+        <h3>Conditions/Comments</h3>
+        <p style="border: 1px solid #ccc; min-height: 60px; padding: 8px; background: white;"></p>
+
+        <h3>Signatures</h3>
+        <p>
+            <span class="signature-line"></span><br>
+            <small>Governance Committee Chair</small>
+        </p>
+        <p>
+            <span class="signature-line"></span><br>
+            <small>Clinical Lead</small>
+        </p>
+        <p>
+            <span class="signature-line"></span><br>
+            <small>Date</small>
+        </p>
+
+        <p style="font-size: 16px; color: #666; margin-top: 24px; font-style: italic;">
+            Metrics computed per Van Calster et al. (2025) methodology, organized following CHAI RAIC Checkpoint 1 governance criteria. Interpretation rests with your organization's governance process.
+        </p>
+    </section>
+    
+
+        <footer class="footer">
+            <p>Metrics computed per Van Calster et al. (2025) methodology, organized following CHAI RAIC Checkpoint 1 governance criteria. Interpretation rests with your organization's governance process.</p>
+            <p>Generated by FairCareAI on 2026-01-08</p>
+        </footer>
+    </div>
+</body>
+</html>

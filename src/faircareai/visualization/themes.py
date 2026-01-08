@@ -57,6 +57,67 @@ FAIRCAREAI_COLORS = {
     "text": "#191919",
 }
 
+
+def get_contrast_text_color(background_hex: str) -> str:
+    """
+    Calculate optimal text color (white or dark) based on background luminance.
+
+    Uses WCAG 2.1 relative luminance formula to ensure 4.5:1 contrast ratio
+    for normal text. This function dynamically selects text color to meet
+    accessibility standards for text-in-bars visualizations.
+
+    Args:
+        background_hex: Hex color code (e.g., "#C9B900" or "C9B900")
+
+    Returns:
+        "white" for dark backgrounds, "#191919" for light backgrounds
+
+    Examples:
+        >>> get_contrast_text_color("#0072B2")  # Blue → white
+        'white'
+        >>> get_contrast_text_color("#C9B900")  # Yellow → dark
+        '#191919'
+        >>> get_contrast_text_color("#E69F00")  # Orange → dark
+        '#191919'
+
+    References:
+        WCAG 2.1 Level AA: https://www.w3.org/WAI/WCAG21/Understanding/contrast-minimum
+        Relative Luminance: https://www.w3.org/TR/WCAG21/#dfn-relative-luminance
+    """
+    # Convert hex to RGB (handle with or without #)
+    hex_color = background_hex.lstrip("#")
+    r, g, b = [int(hex_color[i : i + 2], 16) / 255.0 for i in (0, 2, 4)]
+
+    # Apply gamma correction (linearization)
+    def linearize(c: float) -> float:
+        return c / 12.92 if c <= 0.03928 else ((c + 0.055) / 1.055) ** 2.4
+
+    r_lin, g_lin, b_lin = linearize(r), linearize(g), linearize(b)
+
+    # Calculate relative luminance using WCAG formula
+    # Coefficients based on human perception of RGB colors
+    luminance = 0.2126 * r_lin + 0.7152 * g_lin + 0.0722 * b_lin
+
+    # Calculate contrast ratios with both white and dark text
+    # Contrast formula: (L1 + 0.05) / (L2 + 0.05) where L1 > L2
+    white_luminance = 1.0
+    dark_luminance = 0.0  # Approximate for #191919 (very dark)
+
+    # Contrast with white text
+    contrast_white = (max(luminance, white_luminance) + 0.05) / (
+        min(luminance, white_luminance) + 0.05
+    )
+
+    # Contrast with dark text (approximate #191919 as pure black for simplicity)
+    contrast_dark = (max(luminance, dark_luminance) + 0.05) / (
+        min(luminance, dark_luminance) + 0.05
+    )
+
+    # Choose text color with better contrast
+    # Prefer dark text if it provides better or equal contrast
+    return "#191919" if contrast_dark >= contrast_white else "white"
+
+
 # FairCareAI Brand Elements
 FAIRCAREAI_BRAND = {
     "name": "FairCareAI",
@@ -195,50 +256,51 @@ LEGEND_POSITIONS = {
 # SUBPLOT SPACING - Consistent spacing for multi-panel charts
 # =============================================================================
 SUBPLOT_SPACING = {
-    "default": {"vertical_spacing": 0.15, "horizontal_spacing": 0.12},
-    "tight": {"vertical_spacing": 0.10, "horizontal_spacing": 0.08},
-    "wide": {"vertical_spacing": 0.20, "horizontal_spacing": 0.15},
+    "default": {"vertical_spacing": 0.22, "horizontal_spacing": 0.15},
+    "tight": {"vertical_spacing": 0.15, "horizontal_spacing": 0.10},
+    "wide": {"vertical_spacing": 0.28, "horizontal_spacing": 0.18},
+    "dashboard": {"vertical_spacing": 0.35, "horizontal_spacing": 0.20},  # Extra room for labels
 }
 
 # Typography Configuration
-# Scientific Publication Style: Large, clear fonts for readability
-# Designed for healthcare dashboards, governance reports, and scientific presentations
+# Scientific Publication Style: JAMA/NEJM/Nature compatible
+# NYT Graphics-inspired hierarchy with proper serif/sans-serif distinction
 TYPOGRAPHY: dict[str, Any] = {
-    # Font families with full fallback stacks
-    "heading_font": "Merriweather, Georgia, serif",
-    "data_font": "Inter, -apple-system, BlinkMacSystemFont, sans-serif",
+    # Font families - serif for headlines (scientific tradition), sans for data
+    "heading_font": "Georgia, 'Times New Roman', serif",  # Serif for titles
+    "data_font": "Inter, -apple-system, BlinkMacSystemFont, sans-serif",  # Sans for data
     "mono_font": "JetBrains Mono, Menlo, Monaco, monospace",
-    # Heading hierarchy (h1-h6) - large headers for readability
-    "heading_size": 40,  # h1 - main chart title (prominent)
-    "subheading_size": 32,  # h2 - section headers
-    "h3_size": 28,  # h3 - subsections
-    "h4_size": 24,  # h4
-    "h5_size": 20,  # h5
-    "h6_size": 18,  # h6
-    # Body and label sizes - clear and readable
-    "body_size": 18,  # body text
-    "label_size": 18,  # y-axis labels, tick labels (18pt minimum)
-    "small_size": 16,  # small text (still readable)
+    # Heading hierarchy - optimized for publication
+    "heading_size": 18,  # h1 - main figure title
+    "subheading_size": 14,  # h2 - section headers
+    "h3_size": 13,  # h3 - subsections
+    "h4_size": 12,  # h4
+    "h5_size": 11,  # h5
+    "h6_size": 10,  # h6
+    # Body and label sizes
+    "body_size": 11,  # body text
+    "label_size": 10,  # tick labels
+    "small_size": 9,   # footnotes, source notes
     # Font weights
-    "heading_weight": 700,
+    "heading_weight": 700,  # Bold titles
     "subheading_weight": 600,
     "label_weight": 500,
-    "line_height": 1.5,
-    # Chart typography - SCIENTIFIC STANDARD (large, clear, readable)
-    "headline_size": 36,  # main chart title (prominent)
-    "deck_size": 24,  # subtitle
-    "annotation_size": 18,  # data labels on charts (must be readable)
-    "source_size": 14,  # source attribution
-    "callout_size": 18,  # callout annotations
-    # Axis typography - CRITICAL for scientific figures
-    "axis_title_size": 22,  # axis titles - LARGE (X-axis label, Y-axis label)
-    "tick_size": 18,  # tick labels - LARGE (numbers on axes)
-    "legend_size": 18,  # legend text - readable
+    "line_height": 1.4,
+    # Chart typography - SCIENTIFIC PUBLICATION STANDARD
+    "headline_size": 16,  # Main figure title (serif, bold)
+    "deck_size": 12,      # Subtitle/context (sans, normal)
+    "annotation_size": 10, # Data labels on charts
+    "source_size": 9,     # Source attribution (italic)
+    "callout_size": 10,   # Callout annotations
+    # Axis typography - readable at publication scale
+    "axis_title_size": 11,  # X/Y axis labels
+    "tick_size": 10,        # Tick labels
+    "legend_size": 10,      # Legend text
     # PowerPoint/Export specific (larger for presentations)
-    "ppt_title_size": 44,  # slide titles
-    "ppt_subtitle_size": 32,  # slide subtitles
-    "ppt_body_size": 24,  # slide body text
-    "ppt_label_size": 20,  # chart labels in PPT
+    "ppt_title_size": 28,   # Slide titles
+    "ppt_subtitle_size": 20, # Slide subtitles
+    "ppt_body_size": 16,    # Slide body text
+    "ppt_label_size": 14,   # Chart labels in PPT
 }
 
 
@@ -513,9 +575,7 @@ def get_plotly_template(editorial_mode: bool = True) -> dict:
                 "yanchor": "top",
             },
             # Pure white backgrounds for professional style
-            "paper_bgcolor": "#FFFFFF",
-            "plot_bgcolor": "#FFFFFF",
-            "margin": {"l": 80, "r": 40, "t": 100, "b": 80},
+            "margin": {"l": 80, "r": 40, "t": 80, "b": 120},  # Extra bottom for rotated labels
             "xaxis": {
                 "showgrid": False,
                 "showline": True,

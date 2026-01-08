@@ -659,7 +659,7 @@ class FairCareAudit:
         for w in warnings:
             logger.warning(w)
 
-        results = AuditResults(config=self.config)
+        results = AuditResults(config=self.config, threshold=self.threshold)
 
         # Section 1: Descriptive Statistics
         from faircareai.metrics.descriptive import compute_cohort_summary

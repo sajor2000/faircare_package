@@ -540,6 +540,7 @@ class TestToAuditSummary:
         )
         return AuditResults(
             config=config,
+            threshold=0.3,  # Match the config.decision_thresholds
             descriptive_stats={"cohort_overview": {"n_total": 5000}},
             subgroup_performance={"race": {"groups": {"White": {}, "Black": {}}}},
             fairness_metrics={"race": {"equalized_odds_diff": {"White": 0.02, "Black": -0.08}}},
@@ -583,3 +584,25 @@ class TestToAuditSummary:
         with patch("faircareai.reports.generator.AuditSummary"):
             # Should not raise with None values
             results._to_audit_summary()
+
+    @patch("faircareai.reports.generator.AuditSummary")
+    def test_threshold_preserved_from_audit_results(self, mock_summary: MagicMock) -> None:
+        """Test that threshold from AuditResults is used, not from config.decision_thresholds."""
+        config = FairnessConfig(
+            model_name="Threshold Test",
+            model_version="1.0",
+            decision_thresholds=[0.5],  # Config has default 0.5
+        )
+        # Create AuditResults with custom threshold 0.414
+        results = AuditResults(
+            config=config,
+            threshold=0.414,  # Custom threshold different from config
+            descriptive_stats={"cohort_overview": {"n_total": 1000}},
+            governance_recommendation={"n_pass": 10, "n_warnings": 0, "n_errors": 0},
+        )
+
+        results._to_audit_summary()
+        call_kwargs = mock_summary.call_args.kwargs
+
+        # Should use AuditResults.threshold (0.414), not config.decision_thresholds[0] (0.5)
+        assert call_kwargs["threshold"] == 0.414

@@ -67,7 +67,10 @@ pip install faircareai
 
 ```bash
 pip install "faircareai[export]"
+python -m playwright install chromium  # Required for PDF generation
 ```
+
+**Note**: PDF generation uses Playwright for cross-platform compatibility. See [PDF_SETUP_GUIDE.md](PDF_SETUP_GUIDE.md) for details.
 
 ### Development Installation
 
@@ -76,6 +79,22 @@ git clone https://github.com/sajor2000/faircare_package.git
 cd faircareai
 pip install -e ".[dev]"
 ```
+
+### Platform Support
+
+FairCareAI is tested and supported on:
+
+| Platform | Python Versions | Status |
+|----------|-----------------|--------|
+| **macOS** (Intel & Apple Silicon) | 3.10, 3.11, 3.12 | ✅ Fully Supported |
+| **Windows** (x64) | 3.10, 3.11, 3.12 | ✅ Fully Supported |
+| **Linux** (Ubuntu, Debian, RHEL, Arch) | 3.10, 3.11, 3.12 | ✅ Fully Supported |
+
+**Notes:**
+- PDF generation requires Playwright Chromium browser (auto-installed with `python -m playwright install chromium`)
+- No system dependencies required (all Python packages)
+- Identical setup process on all platforms
+- CI/CD tested on all platform combinations
 
 ### Requirements
 

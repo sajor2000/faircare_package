@@ -344,8 +344,12 @@ def _compute_calibration_metrics(
         try:
             int_model = Logit(y_true, np.ones_like(y_true), offset=logit_p).fit(disp=0)
             result["calibration_intercept"] = float(int_model.params.iloc[0])
-        except Exception:
+        except Exception as e:
             # Fallback to sklearn method if statsmodels fails
+            logger.warning(
+                "Statsmodels calibration intercept failed, using sklearn fallback: %s",
+                str(e),
+            )
             lr_int = LogisticRegression(solver="lbfgs", max_iter=1000)
             lr_int.fit(logit_p.reshape(-1, 1), y_true)
             result["calibration_intercept"] = float(lr_int.intercept_[0])
@@ -551,8 +555,11 @@ def _compute_risk_distribution(
                 "statistic": float(ks_stat),
                 "p_value": float(ks_pval),
             }
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug(
+                "Kolmogorov-Smirnov test failed for risk distributions: %s",
+                str(e),
+            )
 
     return result
 

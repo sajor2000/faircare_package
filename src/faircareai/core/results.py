@@ -48,6 +48,7 @@ class AuditResults:
     """
 
     config: FairnessConfig
+    threshold: float = 0.5  # Decision threshold used for classification metrics
 
     # Results - IN ORDER OF REPORT SECTIONS
     # Section 1: Descriptive Statistics (Table 1)
@@ -572,9 +573,7 @@ class AuditResults:
             audit_date=self.config.report_date or "",
             n_samples=self.descriptive_stats.get("cohort_overview", {}).get("n_total", 0),
             n_groups=n_groups,
-            threshold=self.config.decision_thresholds[0]
-            if self.config.decision_thresholds
-            else 0.5,
+            threshold=self.threshold,
             pass_count=self.governance_recommendation.get("n_pass", 0),
             warn_count=self.governance_recommendation.get("n_warnings", 0),
             fail_count=self.governance_recommendation.get("n_errors", 0),
