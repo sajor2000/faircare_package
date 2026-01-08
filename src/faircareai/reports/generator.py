@@ -623,6 +623,23 @@ def _generate_performance_section(results: "AuditResults") -> str:
     )
     slope_interp = "Well calibrated" if 0.8 <= slope <= 1.2 else "May need recalibration"
 
+    # Generate interactive charts
+    charts_html = ""
+    try:
+        from faircareai.visualization.governance_dashboard import (
+            create_governance_overall_figures,
+        )
+
+        figures = create_governance_overall_figures(results)
+        charts_html = '<div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; margin-top: 20px;">'
+        for title, fig in figures.items():
+            if fig is not None:
+                fig_html = fig.to_html(full_html=False, include_plotlyjs=False, div_id=f"chart-{title.replace(' ', '-').lower()}")
+                charts_html += f'<div>{fig_html}</div>'
+        charts_html += '</div>'
+    except Exception as e:
+        charts_html = f'<div class="chart-placeholder">Interactive charts could not be generated: {str(e)}</div>'
+
     return f"""
     <section class="section">
         <h2>Section 3: Overall Model Performance (TRIPOD+AI)</h2>
@@ -698,9 +715,7 @@ def _generate_performance_section(results: "AuditResults") -> str:
             </div>
         </div>
 
-        <div class="chart-placeholder">
-            [Interactive ROC and Calibration curves available in HTML version]
-        </div>
+        {charts_html}
     </section>
     """
 
@@ -735,6 +750,25 @@ def _generate_subgroup_section(results: "AuditResults") -> str:
                 <td>{fpr_str}</td>
             </tr>
             """
+
+    # Generate interactive subgroup charts
+    charts_html = ""
+    try:
+        from faircareai.visualization.governance_dashboard import (
+            create_governance_subgroup_figures,
+        )
+
+        all_figures = create_governance_subgroup_figures(results)
+        for attr_name, figures in all_figures.items():
+            charts_html += f'<h3 style="margin-top: 30px; color: #2c5282;">{attr_name.replace("_", " ").title()}</h3>'
+            charts_html += '<div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; margin-top: 15px;">'
+            for title, fig in figures.items():
+                if fig is not None:
+                    fig_html = fig.to_html(full_html=False, include_plotlyjs=False, div_id=f"chart-{attr_name}-{title.replace(' ', '-').lower()}")
+                    charts_html += f'<div>{fig_html}</div>'
+            charts_html += '</div>'
+    except Exception as e:
+        charts_html = f'<div class="chart-placeholder">Interactive charts could not be generated: {str(e)}</div>'
 
     return f"""
     <section class="section">
@@ -771,9 +805,7 @@ def _generate_subgroup_section(results: "AuditResults") -> str:
             </ul>
         </div>
 
-        <div class="chart-placeholder">
-            [Interactive subgroup comparison charts available in HTML version]
-        </div>
+        {charts_html}
     </section>
     """
 
