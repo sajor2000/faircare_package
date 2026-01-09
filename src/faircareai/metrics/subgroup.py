@@ -16,6 +16,11 @@ import polars as pl
 from sklearn.metrics import roc_auc_score
 
 from faircareai.core.metrics import compute_confusion_metrics
+from faircareai.metrics.group_utils import (
+    determine_reference_group,
+    filter_to_group,
+    get_unique_groups,
+)
 
 
 def compute_subgroup_metrics(
@@ -49,18 +54,16 @@ def compute_subgroup_metrics(
         "groups": {},
     }
 
-    groups = df[group_col].drop_nulls().unique().sort().to_list()
+    groups = get_unique_groups(df, group_col)
 
     # Determine reference group
-    if reference is None:
-        group_counts = df.group_by(group_col).len().sort("len", descending=True)
-        reference = group_counts[group_col][0]
+    reference = determine_reference_group(groups, df, group_col, reference)
 
     results["reference"] = reference
 
     # Compute metrics for each group
     for group in groups:
-        group_df = df.filter(pl.col(group_col) == group)
+        group_df = filter_to_group(df, group_col, group)
         y_true = group_df[y_true_col].to_numpy()
         y_prob = group_df[y_prob_col].to_numpy()
         y_pred = (y_prob >= threshold).astype(int)
