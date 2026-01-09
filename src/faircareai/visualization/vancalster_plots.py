@@ -936,7 +936,7 @@ def create_risk_distribution_plot(
         meta={"description": alt_text},
     )
 
-    # Update all y-axes with JAMA-style font sizing and descriptive labels
+    # Update all y-axes with publication-style font sizing and descriptive labels
     for i in range(1, n_groups + 1):
         fig.update_yaxes(
             title_text=y_axis_label if i == 1 else "",
@@ -1163,7 +1163,7 @@ def create_vancalster_dashboard(
         legend=LEGEND_POSITIONS["bottom_horizontal"],
     )
 
-    # Update axes with JAMA-style font sizing
+    # Update axes with publication-style font sizing
     fig.update_yaxes(
         title_text="AUROC",
         title_font=dict(size=TYPOGRAPHY["axis_title_size"]),

@@ -275,8 +275,7 @@ SUBPLOT_SPACING = {
 }
 
 # Typography Configuration
-# Scientific Publication Style: JAMA/NEJM/Nature compatible
-# NYT Graphics-inspired hierarchy with proper serif/sans-serif distinction
+# Scientific Publication Style with proper serif/sans-serif distinction
 TYPOGRAPHY: dict[str, Any] = {
     # Font families - serif for headlines (scientific tradition), sans for data
     "heading_font": "Georgia, 'Times New Roman', serif",  # Serif for titles

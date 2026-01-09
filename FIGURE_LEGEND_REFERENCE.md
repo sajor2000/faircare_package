@@ -364,7 +364,7 @@ All FairCareAI figures now meet publication-ready standards:
 | Disclaimer | 14px | 14px |
 
 **Standards Applied:**
-- JAMA scientific publication typography guidelines
+- Scientific publication typography guidelines
 - WCAG 2.1 AA accessibility compliance
 - Minimum 4.5:1 contrast ratio for all text
 - Okabe-Ito colorblind-safe palette

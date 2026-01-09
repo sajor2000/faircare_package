@@ -522,7 +522,7 @@ For each sensitive attribute (race, sex, insurance, etc.), FairCareAI generates:
 
 All visualizations follow publication-ready standards:
 
-- **Minimum 14px font size** for all text (JAMA-compliant)
+- **Minimum 14px font size** for all text (publication-compliant)
 - **WCAG 2.1 AA contrast ratios** for text and UI elements
 - **Colorblind-safe palettes** (tested with CVD simulation)
 - **Alt text** for screen readers on all figures
@@ -779,7 +779,7 @@ Tested with:
 
 ### Publication-Ready Typography
 
-Governance reports follow JAMA style guidelines:
+Governance reports follow publication style guidelines:
 
 - **Body text**: 14px (minimum)
 - **Headings**: 16-20px, bold

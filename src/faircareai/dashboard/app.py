@@ -7,7 +7,7 @@ Personas:
 - Governance Committee: Plain-language explanations, high-level findings
 - Data Scientists: Technical details, statistical metrics, export options
 
-Design: NYT Editorial Aesthetic with colorblind-safe Okabe-Ito palette.
+Design: Publication-ready aesthetic with colorblind-safe Okabe-Ito palette.
 """
 
 from pathlib import Path

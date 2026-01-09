@@ -28,7 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Publication-Ready Typography**
   - Minimum 14px font size throughout all visualizations
-  - JAMA-compliant styling standards
+  - Publication-compliant styling standards
   - Dynamic chart heights that scale with data
   - Generous margins preventing text truncation
 

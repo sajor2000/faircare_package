@@ -295,10 +295,10 @@ def _generate_full_report_html(results: "AuditResults") -> str:
 
         * {{ box-sizing: border-box; }}
 
-        /* JAMA Scientific Publication Style - Large, Clear, Readable */
+        /* Scientific Publication Style - Large, Clear, Readable */
         body {{
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-            font-size: {TYPOGRAPHY["body_size"]}px;  /* 18px - JAMA readable */
+            font-size: {TYPOGRAPHY["body_size"]}px;  /* 18px - publication readable */
             color: var(--text-color);
             background-color: var(--bg-color);
             line-height: 1.6;
@@ -318,7 +318,7 @@ def _generate_full_report_html(results: "AuditResults") -> str:
             margin-top: 0;
         }}
 
-        /* JAMA-style large headers */
+        /* Publication-style large headers */
         h1 {{ font-size: {TYPOGRAPHY["heading_size"]}px; margin-bottom: 12px; }}  /* 40px */
         h2 {{ font-size: {TYPOGRAPHY["subheading_size"]}px; margin-top: 40px; border-bottom: 2px solid var(--primary-color); padding-bottom: 10px; }}  /* 32px */
         h3 {{ font-size: {TYPOGRAPHY["h3_size"]}px; margin-top: 28px; color: var(--secondary-color); }}  /* 28px */
@@ -331,7 +331,7 @@ def _generate_full_report_html(results: "AuditResults") -> str:
             margin-bottom: 30px;
         }}
 
-        /* JAMA readable metadata */
+        /* Publication readable metadata */
         .metadata {{ color: #666; font-size: {TYPOGRAPHY["label_size"]}px; }}  /* 18px */
 
         .status-badge {{
@@ -369,7 +369,7 @@ def _generate_full_report_html(results: "AuditResults") -> str:
             background: var(--bg-color);
         }}
 
-        /* JAMA large scorecard numbers */
+        /* Large scorecard numbers */
         .scorecard-value {{
             font-size: {TYPOGRAPHY["heading_size"]}px;  /* 40px - prominent */
             font-weight: 700;
@@ -386,7 +386,7 @@ def _generate_full_report_html(results: "AuditResults") -> str:
         .warn {{ color: var(--warn-color); }}
         .fail {{ color: var(--fail-color); }}
 
-        /* JAMA-style readable tables */
+        /* Publication-style readable tables */
         table {{
             width: 100%;
             border-collapse: collapse;
@@ -463,7 +463,7 @@ def _generate_full_report_html(results: "AuditResults") -> str:
             border-radius: 6px;
         }}
 
-        /* JAMA large metric values */
+        /* Large metric values */
         .metric-value {{
             font-size: {TYPOGRAPHY["subheading_size"]}px;  /* 32px - prominent */
             font-weight: 700;
@@ -1297,13 +1297,13 @@ def _get_print_css() -> str:
 
 
 def _add_title_slide(prs: Any, summary: AuditSummary) -> None:
-    """Add title slide to presentation with JAMA-style typography."""
+    """Add title slide to presentation with publication-ready typography."""
     from pptx.util import Inches, Pt
 
     slide_layout = prs.slide_layouts[6]  # Blank layout
     slide = prs.slides.add_slide(slide_layout)
 
-    # Title - JAMA style large, clear (44pt from TYPOGRAPHY)
+    # Title - large, clear (44pt from TYPOGRAPHY)
     title_box = slide.shapes.add_textbox(Inches(0.5), Inches(2.5), Inches(12), Inches(1))
     tf = title_box.text_frame
     p = tf.paragraphs[0]
@@ -1311,7 +1311,7 @@ def _add_title_slide(prs: Any, summary: AuditSummary) -> None:
     p.font.size = Pt(TYPOGRAPHY["ppt_title_size"])  # 44pt
     p.font.bold = True
 
-    # Subtitle - JAMA style readable (32pt)
+    # Subtitle - readable (32pt)
     subtitle_box = slide.shapes.add_textbox(Inches(0.5), Inches(3.7), Inches(12), Inches(0.5))
     tf = subtitle_box.text_frame
     p = tf.paragraphs[0]
@@ -1327,14 +1327,14 @@ def _add_title_slide(prs: Any, summary: AuditSummary) -> None:
 
 
 def _add_summary_slide(prs: Any, summary: AuditSummary) -> None:
-    """Add executive summary slide with JAMA-style typography."""
+    """Add executive summary slide with publication-ready typography."""
     from pptx.dml.color import RGBColor
     from pptx.util import Inches, Pt
 
     slide_layout = prs.slide_layouts[6]
     slide = prs.slides.add_slide(slide_layout)
 
-    # Title - JAMA style (36pt from subheading)
+    # Title - publication style (36pt from subheading)
     title_box = slide.shapes.add_textbox(Inches(0.5), Inches(0.5), Inches(12), Inches(0.7))
     tf = title_box.text_frame
     p = tf.paragraphs[0]
@@ -1380,13 +1380,13 @@ def _add_summary_slide(prs: Any, summary: AuditSummary) -> None:
 
 
 def _add_findings_slide(prs: Any, summary: AuditSummary) -> None:
-    """Add key findings slide with JAMA-style typography."""
+    """Add key findings slide with publication-ready typography."""
     from pptx.util import Inches, Pt
 
     slide_layout = prs.slide_layouts[6]
     slide = prs.slides.add_slide(slide_layout)
 
-    # Title - JAMA style (36pt)
+    # Title - publication style (36pt)
     title_box = slide.shapes.add_textbox(Inches(0.5), Inches(0.5), Inches(12), Inches(0.7))
     tf = title_box.text_frame
     p = tf.paragraphs[0]
@@ -1411,13 +1411,13 @@ def _add_findings_slide(prs: Any, summary: AuditSummary) -> None:
 
 
 def _add_recommendations_slide(prs: Any, summary: AuditSummary) -> None:
-    """Add methodology slide with JAMA-style typography."""
+    """Add methodology slide with publication-ready typography."""
     from pptx.util import Inches, Pt
 
     slide_layout = prs.slide_layouts[6]
     slide = prs.slides.add_slide(slide_layout)
 
-    # Title - JAMA style (36pt)
+    # Title - publication style (36pt)
     title_box = slide.shapes.add_textbox(Inches(0.5), Inches(0.5), Inches(12), Inches(0.7))
     tf = title_box.text_frame
     p = tf.paragraphs[0]
