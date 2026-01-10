@@ -10,6 +10,7 @@ Healthcare organizations interpret results based on their clinical context.
 
 from typing import TYPE_CHECKING, Any
 
+import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
@@ -922,7 +923,7 @@ def create_governance_overall_figures(results: "AuditResults") -> dict[str, Any]
     Returns:
         Dict mapping figure title to Plotly Figure, plus '_explanations' dict.
     """
-    figures: dict[str, go.Figure | str] = {}
+    figures: dict[str, Any] = {}
 
     perf = results.overall_performance
     disc = perf.get("discrimination", {})
@@ -1139,7 +1140,10 @@ def create_governance_overall_figures(results: "AuditResults") -> dict[str, Any]
         ),
         xaxis=dict(title="Performance Metric", tickfont={"size": 14}),
         yaxis=dict(
-            title="Performance at Threshold (%)", range=[0, 110], ticksuffix="%", tickfont={"size": 14}
+            title="Performance at Threshold (%)",
+            range=[0, 110],
+            ticksuffix="%",
+            tickfont={"size": 14},
         ),
         height=400,
         margin=dict(l=80, r=40, t=90, b=80),
@@ -1148,7 +1152,7 @@ def create_governance_overall_figures(results: "AuditResults") -> dict[str, Any]
     figures["Classification"] = fig_class
 
     # Return explanations separately for HTML rendering
-    figures["_explanations"] = PLAIN_EXPLANATIONS  # type: ignore[assignment]
+    figures["_explanations"] = PLAIN_EXPLANATIONS
 
     return figures
 
@@ -1389,7 +1393,7 @@ def _create_subgroup_bar_chart(
             title_font=dict(size=13),
         ),
         height=380,  # Good height for chart
-        margin=dict(l=80, r=40, t=100, b=160),  # Top margin for long titles, bottom for rotated labels
+        margin=dict(l=80, r=40, t=100, b=160),  # Top: long titles, bottom: rotated labels
         showlegend=False,
     )
 
@@ -1490,8 +1494,6 @@ def create_governance_probability_distribution(results: "AuditResults") -> go.Fi
     Returns:
         Plotly Figure with overlapping histograms, or None if data unavailable
     """
-    import numpy as np
-
     # Access raw data via _audit reference
     if results._audit is None:
         return None

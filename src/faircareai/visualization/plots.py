@@ -558,7 +558,7 @@ def create_forest_plot(
         ),
         template="faircareai",
         height=calculate_chart_height(len(df), "forest"),
-        margin=dict(l=220, r=100, t=100, b=140),  # Wider left margin for long demographic names; extra bottom for rotated labels
+        margin=dict(l=220, r=100, t=100, b=140),  # Wide left for long names
         meta={"description": alt_text},  # WCAG 2.1 screen reader support
     )
 
@@ -693,7 +693,7 @@ def create_disparity_heatmap(
         annotations=annotations,
         template="faircareai",
         height=calculate_chart_height(n_groups, "bar"),
-        margin=dict(l=120, r=80, t=120, b=160),  # Extra bottom margin for rotated labels + annotations
+        margin=dict(l=120, r=80, t=120, b=160),  # Bottom margin for rotated labels
         meta={"description": alt_text},  # WCAG 2.1 screen reader support
     )
 
