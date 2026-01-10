@@ -300,10 +300,13 @@ class TestGovernanceOverallFigures:
         )
 
         figures = create_governance_overall_figures(results_with_performance)
-        # Should have 4 overall figures with descriptive names
-        assert len(figures) == 4
+        # Should have 4 figures + _explanations dict (5 total)
+        assert len(figures) == 5
+        assert "_explanations" in figures
         # Check that we have the expected figure types (by checking key contains expected words)
-        keys_lower = [k.lower() for k in figures.keys()]
+        figure_keys = [k for k in figures.keys() if k != "_explanations"]
+        assert len(figure_keys) == 4
+        keys_lower = [k.lower() for k in figure_keys]
         assert any("auroc" in k for k in keys_lower)
         assert any("calibration" in k for k in keys_lower)
         assert any("brier" in k for k in keys_lower)

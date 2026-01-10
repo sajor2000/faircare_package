@@ -79,31 +79,33 @@ class TestAddSourceAnnotation:
     """Tests for add_source_annotation function."""
 
     def test_adds_annotation(self) -> None:
-        """Test that annotation is added to figure."""
+        """Test that function returns figure unchanged (annotations moved to HTML)."""
         import plotly.graph_objects as go
 
         fig = go.Figure()
         result = add_source_annotation(fig)
         assert result is fig
-        assert len(fig.layout.annotations) == 1
+        # Source annotations now added in HTML report footer, not Plotly inline
 
     def test_default_source_note(self) -> None:
-        """Test that default source note is used."""
+        """Test that function accepts source note parameter."""
         import plotly.graph_objects as go
 
         fig = go.Figure()
-        add_source_annotation(fig)
-        annotation = fig.layout.annotations[0]
-        assert FAIRCAREAI_BRAND["source_note"] in annotation.text
+        result = add_source_annotation(fig)
+        assert result is not None
+        assert isinstance(result, go.Figure)
+        # Source note now handled in HTML report generation
 
     def test_custom_source_note(self) -> None:
-        """Test custom source note."""
+        """Test custom source note parameter."""
         import plotly.graph_objects as go
 
         fig = go.Figure()
-        add_source_annotation(fig, "Custom Source")
-        annotation = fig.layout.annotations[0]
-        assert "Custom Source" in annotation.text
+        result = add_source_annotation(fig, "Custom Source")
+        assert result is not None
+        assert isinstance(result, go.Figure)
+        # Custom source notes now added in HTML report footer
 
 
 class TestGetStatusColor:

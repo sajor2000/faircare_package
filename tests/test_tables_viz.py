@@ -86,19 +86,19 @@ class TestCreatePlainLanguageSummary:
     def test_flag_status(self) -> None:
         """Test status when flags present."""
         result = create_plain_language_summary(5, 3, 2, "Group A", "TPR", 0.15)
-        assert "REVIEW SUGGESTED" in result
+        assert "THRESHOLD EXCEEDED" in result
         assert SEMANTIC_COLORS["fail"] in result
 
     def test_warn_status_no_flags(self) -> None:
         """Test status when warnings but no flags."""
         result = create_plain_language_summary(5, 3, 0, "Group A", "TPR", 0.08)
-        assert "CONSIDERATIONS NOTED" in result
+        assert "NEAR THRESHOLD" in result
         assert SEMANTIC_COLORS["warn"] in result
 
     def test_pass_status_no_flags_no_warns(self) -> None:
         """Test status when no flags and no warnings."""
         result = create_plain_language_summary(10, 0, 0, "Group A", "TPR", 0.02)
-        assert "NO FLAGS" in result
+        assert "WITHIN THRESHOLDS" in result
         assert SEMANTIC_COLORS["pass"] in result
 
     def test_contains_worst_group(self) -> None:
@@ -124,10 +124,10 @@ class TestCreatePlainLanguageSummary:
         assert "15.0%" in result
 
     def test_contains_advisory_disclaimer(self) -> None:
-        """Test that result contains advisory disclaimer."""
+        """Test that result contains governance disclaimer."""
         result = create_plain_language_summary(5, 3, 2, "Group A", "TPR", 0.15)
-        assert "Advisory guidance" in result
-        assert "clinical stakeholders" in result
+        assert "Data provided for governance team review" in result
+        assert "health system governance committee" in result
 
     def test_contains_font_family(self) -> None:
         """Test that result contains correct font family."""
@@ -160,32 +160,32 @@ class TestCreatePlainLanguageSummary:
     def test_flag_count_one(self) -> None:
         """Test with exactly one flag."""
         result = create_plain_language_summary(5, 3, 1, "Group A", "TPR", 0.15)
-        assert "REVIEW SUGGESTED" in result
+        assert "THRESHOLD EXCEEDED" in result
 
     def test_warn_count_one_no_flags(self) -> None:
         """Test with exactly one warning and no flags."""
         result = create_plain_language_summary(5, 1, 0, "Group A", "TPR", 0.08)
-        assert "CONSIDERATIONS NOTED" in result
+        assert "NEAR THRESHOLD" in result
 
     def test_all_zeros(self) -> None:
         """Test with all zero counts."""
         result = create_plain_language_summary(0, 0, 0, "Group A", "TPR", 0.02)
-        assert "NO FLAGS" in result
+        assert "WITHIN THRESHOLDS" in result
 
     def test_disparities_flagged_message(self) -> None:
         """Test that flag status includes correct advisory message."""
         result = create_plain_language_summary(0, 0, 5, "Group A", "TPR", 0.20)
-        assert "Disparities flagged for clinical review" in result
+        assert "Some metrics exceed configured thresholds" in result
 
     def test_considerations_message(self) -> None:
         """Test that warn status includes correct advisory message."""
         result = create_plain_language_summary(5, 3, 0, "Group A", "TPR", 0.08)
-        assert "Some metrics may warrant discussion" in result
+        assert "Some metrics are approaching thresholds" in result
 
     def test_no_disparities_message(self) -> None:
         """Test that pass status includes correct advisory message."""
         result = create_plain_language_summary(10, 0, 0, "Group A", "TPR", 0.02)
-        assert "No significant disparities detected at current thresholds" in result
+        assert "All metrics within configured thresholds" in result
 
     def test_inline_style_present(self) -> None:
         """Test that inline styles are present."""
