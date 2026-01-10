@@ -8,7 +8,7 @@ Visual indicators provide at-a-glance status relative to configured thresholds.
 Healthcare organizations interpret results based on their clinical context.
 """
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
@@ -199,7 +199,7 @@ def create_executive_summary(results: "AuditResults") -> go.Figure:
     fig.add_trace(
         go.Table(
             header=dict(
-                values=["<b>Finding</b>", "<b>Status</b>", "<b>Action</b>"],
+                values=["<b>Finding</b>", "<b>Status</b>", "<b>Observation</b>"],
                 fill_color=FAIRCAREAI_COLORS["primary"],
                 font=dict(color="white", size=12),
                 align="left",
@@ -217,7 +217,7 @@ def create_executive_summary(results: "AuditResults") -> go.Figure:
                 ],
                 font=dict(size=14),
                 align="left",
-                height=25,
+                height=35,
             ),
         ),
         row=3,
@@ -250,18 +250,6 @@ def create_executive_summary(results: "AuditResults") -> go.Figure:
         margin=dict(l=80, r=40, t=80, b=140),  # Extra bottom for rotated labels
         meta={"description": alt_text},  # WCAG 2.1 screen reader support
     )
-
-    # Add disclaimer
-    fig.add_annotation(
-        text=GOVERNANCE_DISCLAIMER_SHORT,
-        xref="paper",
-        yref="paper",
-        x=0.5,
-        y=-0.08,
-        showarrow=False,
-        font=dict(size=14, color=FAIRCAREAI_COLORS["gray"]),
-    )
-
     return fig
 
 
@@ -270,7 +258,7 @@ def _generate_key_findings(results: "AuditResults") -> dict[str, list]:
     findings = []
     statuses = []
     status_colors = []
-    actions = []
+    observations = []
 
     perf = results.overall_performance
     disc = perf.get("discrimination", {})
@@ -280,34 +268,34 @@ def _generate_key_findings(results: "AuditResults") -> dict[str, list]:
     auroc = disc.get("auroc", 0)
     findings.append(f"Model Discrimination (AUROC = {auroc:.3f})")
     if auroc >= 0.8:
-        statuses.append("EXCELLENT")
+        statuses.append("STRONG")
         status_colors.append(FAIRCAREAI_COLORS["success"])
-        actions.append("No action required")
+        observations.append("Discrimination above 0.8 threshold")
     elif auroc >= 0.7:
         statuses.append("ACCEPTABLE")
         status_colors.append(FAIRCAREAI_COLORS["warning"])
-        actions.append("Monitor performance post-deployment")
+        observations.append("Discrimination meets 0.7 threshold")
     else:
-        statuses.append("CONCERN")
+        statuses.append("BELOW THRESHOLD")
         status_colors.append(FAIRCAREAI_COLORS["error"])
-        actions.append("Improve model before deployment")
+        observations.append("Discrimination below 0.7 threshold")
 
     # Fairness finding
     n_errors = gov.get("n_errors", 0)
     n_warnings = gov.get("n_warnings", 0)
-    findings.append(f"Fairness Assessment ({n_errors} errors, {n_warnings} warnings)")
+    findings.append(f"Fairness Assessment ({n_errors} exceeded, {n_warnings} near threshold)")
     if n_errors == 0 and n_warnings <= 1:
-        statuses.append("PASS")
+        statuses.append("WITHIN THRESHOLD")
         status_colors.append(FAIRCAREAI_COLORS["success"])
-        actions.append("Continue monitoring")
+        observations.append("Disparities within acceptable range")
     elif n_errors == 0:
-        statuses.append("REVIEW")
+        statuses.append("NEAR THRESHOLD")
         status_colors.append(FAIRCAREAI_COLORS["warning"])
-        actions.append("Address warnings before deployment")
+        observations.append("Some metrics approaching threshold")
     else:
-        statuses.append("FAIL")
+        statuses.append("EXCEEDED THRESHOLD")
         status_colors.append(FAIRCAREAI_COLORS["error"])
-        actions.append("Critical issues must be resolved")
+        observations.append("Disparities exceed configured threshold")
 
     # Calibration finding
     cal = perf.get("calibration", {})
@@ -315,17 +303,17 @@ def _generate_key_findings(results: "AuditResults") -> dict[str, list]:
     slope = cal.get("calibration_slope", 1.0)
     findings.append(f"Calibration (Brier={brier:.3f}, Slope={slope:.2f})")
     if brier < 0.15 and 0.8 <= slope <= 1.2:
-        statuses.append("GOOD")
+        statuses.append("WELL CALIBRATED")
         status_colors.append(FAIRCAREAI_COLORS["success"])
-        actions.append("No recalibration needed")
+        observations.append("Calibration within ideal range")
     elif brier < 0.25:
         statuses.append("ACCEPTABLE")
         status_colors.append(FAIRCAREAI_COLORS["warning"])
-        actions.append("Consider recalibration")
+        observations.append("Calibration meets acceptable threshold")
     else:
-        statuses.append("POOR")
+        statuses.append("NEEDS ATTENTION")
         status_colors.append(FAIRCAREAI_COLORS["error"])
-        actions.append("Recalibration required")
+        observations.append("Calibration below acceptable threshold")
 
     # Sample size finding
     desc = results.descriptive_stats
@@ -334,21 +322,21 @@ def _generate_key_findings(results: "AuditResults") -> dict[str, list]:
     if n_total >= 5000:
         statuses.append("ADEQUATE")
         status_colors.append(FAIRCAREAI_COLORS["success"])
-        actions.append("Sufficient for validation")
+        observations.append("Sample size supports robust analysis")
     elif n_total >= 1000:
         statuses.append("LIMITED")
         status_colors.append(FAIRCAREAI_COLORS["warning"])
-        actions.append("Plan external validation")
+        observations.append("Sample size acceptable but limited")
     else:
         statuses.append("SMALL")
         status_colors.append(FAIRCAREAI_COLORS["error"])
-        actions.append("Expand dataset before deployment")
+        observations.append("Sample size may limit reliability")
 
     return {
         "findings": findings,
         "statuses": statuses,
         "status_colors": status_colors,
-        "actions": actions,
+        "actions": observations,
     }
 
 
@@ -439,35 +427,9 @@ def create_go_nogo_scorecard(results: "AuditResults") -> go.Figure:
             font=dict(size=16),
         ),
         height=500,
-        margin=dict(t=120, b=80),
+        margin=dict(l=80, r=40, t=120, b=80),
         meta={"description": alt_text},  # WCAG 2.1 screen reader support
     )
-
-    # Add summary annotation
-    fig.add_annotation(
-        text=f"<b>Summary:</b> {summary_text}",
-        xref="paper",
-        yref="paper",
-        x=0.5,
-        y=-0.08,
-        showarrow=False,
-        font=dict(size=14),
-        bgcolor="rgba(255,255,255,0.9)",
-        bordercolor=overall_color,
-        borderwidth=2,
-    )
-
-    # Add disclaimer
-    fig.add_annotation(
-        text=GOVERNANCE_DISCLAIMER_SHORT,
-        xref="paper",
-        yref="paper",
-        x=0.5,
-        y=-0.22,  # Moved down to avoid overlap with rotated x-axis labels
-        showarrow=False,
-        font=dict(size=10, color=FAIRCAREAI_COLORS["gray"]),  # WCAG 2.1 AA minimum
-    )
-
     return fig
 
 
@@ -828,17 +790,6 @@ def create_fairness_dashboard(results: "AuditResults") -> go.Figure:
     for annotation in fig['layout']['annotations']:
         if hasattr(annotation, 'text') and annotation.text in ["AUROC by Subgroup", "Selection Rate by Subgroup", "Fairness Metrics", "Disparity Summary"]:
             annotation.font = dict(size=11, family="Inter, sans-serif")
-
-    # Add source annotation (scientific publication standard)
-    fig.add_annotation(
-        text="<i>Source: FairCareAI Analysis | Methodology: Van Calster et al. (2025)</i>",
-        xref="paper", yref="paper",
-        x=0, y=-0.18,  # Moved down to avoid overlap with rotated x-axis labels
-        showarrow=False,
-        font=dict(size=10, color="#6B6B6B"),  # WCAG 2.1 AA minimum
-        xanchor="left",
-    )
-
     return fig
 
 
@@ -954,24 +905,24 @@ def plot_subgroup_comparison(
 # === GOVERNANCE PERSONA FIGURE GENERATORS ===
 
 
-def create_governance_overall_figures(results: "AuditResults") -> dict[str, go.Figure]:
+def create_governance_overall_figures(results: "AuditResults") -> dict[str, Any]:
     """Create 4 overall performance figures for governance report.
 
     Returns simplified, large-font figures suitable for non-technical audiences:
     1. AUROC Gauge - Model discrimination with pass/fail threshold
     2. Calibration Plot - Observed vs predicted with slope
-    3. Decision Curve - Net benefit visualization
-    4. Brier Score - Calibration quality gauge
+    3. Brier Score - Calibration quality gauge
+    4. Classification Metrics - Bar chart of key metrics
 
-    Each figure includes plain language explanations for non-data-science audiences.
+    Explanatory text is returned separately under '_explanations' key for HTML rendering.
 
     Args:
         results: AuditResults from FairCareAudit.run().
 
     Returns:
-        Dict mapping figure title to Plotly Figure.
+        Dict mapping figure title to Plotly Figure, plus '_explanations' dict.
     """
-    figures = {}
+    figures: dict[str, go.Figure | str] = {}
 
     perf = results.overall_performance
     disc = perf.get("discrimination", {})
@@ -1035,25 +986,8 @@ def create_governance_overall_figures(results: "AuditResults") -> dict[str, go.F
         )
     )
     fig_auroc.update_layout(
-        height=300,
-        margin=dict(l=20, r=20, t=70, b=100),
-        annotations=[
-            dict(
-                text=f"<b>{auroc_status}</b>",
-                x=0.5,
-                y=-0.08,
-                showarrow=False,
-                font=dict(size=18, color=auroc_color),
-            ),
-            dict(
-                text=PLAIN_EXPLANATIONS["auroc"],
-                x=0.5,
-                y=-0.22,
-                showarrow=False,
-                font=dict(size=14, color="#666"),
-                xanchor="center",
-            ),
-        ],
+        height=400,
+        margin=dict(l=80, r=40, t=90, b=80),
     )
     figures["AUROC"] = fig_auroc
 
@@ -1115,28 +1049,18 @@ def create_governance_overall_figures(results: "AuditResults") -> dict[str, go.F
             tickfont={"size": 14},
             tickformat=".0%",
         ),
-        height=320,
-        margin=dict(l=50, r=20, t=70, b=100),
+        height=400,
+        margin=dict(l=80, r=40, t=90, b=80),
         legend=dict(x=0.02, y=0.98, font=dict(size=14)),
         annotations=[
             dict(
                 text=f"<b>Slope: {slope:.2f}</b> ({slope_status})",
-                x=0.98,
-                y=0.02,
+                x=0.95,
+                y=0.05,
                 xanchor="right",
                 yanchor="bottom",
                 showarrow=False,
                 font=dict(size=16, color=slope_color),
-            ),
-            dict(
-                text=PLAIN_EXPLANATIONS["calibration"],
-                xref="paper",
-                yref="paper",
-                x=0.5,
-                y=-0.25,  # Consistent spacing below chart
-                showarrow=False,
-                font=dict(size=14, color="#666"),
-                xanchor="center",
             ),
         ],
     )
@@ -1174,25 +1098,8 @@ def create_governance_overall_figures(results: "AuditResults") -> dict[str, go.F
         )
     )
     fig_brier.update_layout(
-        height=300,
-        margin=dict(l=20, r=20, t=70, b=100),
-        annotations=[
-            dict(
-                text=f"<b>{brier_status}</b> (lower is better)",
-                x=0.5,
-                y=-0.08,
-                showarrow=False,
-                font=dict(size=18, color=brier_color),
-            ),
-            dict(
-                text=PLAIN_EXPLANATIONS["brier"],
-                x=0.5,
-                y=-0.22,
-                showarrow=False,
-                font=dict(size=14, color="#666"),
-                xanchor="center",
-            ),
-        ],
+        height=400,
+        margin=dict(l=80, r=40, t=90, b=80),
     )
     figures["Brier Score"] = fig_brier
 
@@ -1232,25 +1139,16 @@ def create_governance_overall_figures(results: "AuditResults") -> dict[str, go.F
         ),
         xaxis=dict(title="Performance Metric", tickfont={"size": 14}),
         yaxis=dict(
-            title="Percentage of Patients", range=[0, 110], ticksuffix="%", tickfont={"size": 14}
+            title="Performance at Threshold (%)", range=[0, 110], ticksuffix="%", tickfont={"size": 14}
         ),
-        height=300,
-        margin=dict(l=40, r=20, t=70, b=100),
+        height=400,
+        margin=dict(l=80, r=40, t=90, b=80),
         showlegend=False,
-        annotations=[
-            dict(
-                text=PLAIN_EXPLANATIONS["classification"],
-                xref="paper",
-                yref="paper",
-                x=0.5,
-                y=-0.25,  # Consistent spacing below chart
-                showarrow=False,
-                font=dict(size=14, color="#666"),
-                xanchor="center",
-            ),
-        ],
     )
     figures["Classification"] = fig_class
+
+    # Return explanations separately for HTML rendering
+    figures["_explanations"] = PLAIN_EXPLANATIONS  # type: ignore[assignment]
 
     return figures
 
@@ -1491,8 +1389,170 @@ def _create_subgroup_bar_chart(
             title_font=dict(size=13),
         ),
         height=380,  # Good height for chart
-        margin=dict(l=70, r=30, t=60, b=130),  # Bottom margin for rotated labels only
+        margin=dict(l=80, r=40, t=100, b=160),  # Top margin for long titles, bottom for rotated labels
         showlegend=False,
+    )
+
+    return fig
+
+
+# === VAN CALSTER 2025 FIGURE GENERATORS ===
+
+
+def create_governance_roc_curve(results: "AuditResults") -> go.Figure | None:
+    """Create simplified ROC curve for governance report.
+
+    Van Calster et al. (2025): RECOMMENDED
+
+    Shows model's ranking ability - curve hugging top-left = good.
+    Simpler than the full discrimination curves plot.
+
+    Args:
+        results: AuditResults from FairCareAudit.run()
+
+    Returns:
+        Plotly Figure with ROC curve, or None if data unavailable
+    """
+    perf = results.overall_performance
+    disc = perf.get("discrimination", {})
+    roc_data = disc.get("roc_curve", {})
+
+    fpr = roc_data.get("fpr", [])
+    tpr = roc_data.get("tpr", [])
+    auroc = disc.get("auroc", 0)
+
+    if not fpr or not tpr:
+        return None
+
+    fig = go.Figure()
+
+    # Diagonal reference (random guessing)
+    fig.add_trace(
+        go.Scatter(
+            x=[0, 1],
+            y=[0, 1],
+            mode="lines",
+            line=dict(color="gray", dash="dash", width=2),
+            name="Random Guessing (AUC=0.50)",
+            showlegend=True,
+        )
+    )
+
+    # ROC curve with shaded area
+    fig.add_trace(
+        go.Scatter(
+            x=fpr,
+            y=tpr,
+            mode="lines",
+            line=dict(color=FAIRCAREAI_COLORS["primary"], width=3),
+            fill="tonexty",
+            fillcolor="rgba(0,114,178,0.15)",
+            name=f"Model (AUC={auroc:.2f})",
+            hovertemplate="FPR: %{x:.1%}<br>TPR: %{y:.1%}<extra></extra>",
+            showlegend=True,
+        )
+    )
+
+    fig.update_layout(
+        title=dict(text="<b>ROC Curve</b>", font=dict(size=20)),
+        xaxis=dict(
+            title="False Positive Rate (% incorrectly flagged)",
+            tickformat=".0%",
+            range=[0, 1],
+            tickfont={"size": 14},
+        ),
+        yaxis=dict(
+            title="True Positive Rate (% correctly identified)",
+            tickformat=".0%",
+            range=[0, 1],
+            tickfont={"size": 14},
+        ),
+        height=450,
+        margin=dict(l=90, r=40, t=70, b=90),
+        legend=dict(x=0.6, y=0.15, bgcolor="rgba(255,255,255,0.9)", font=dict(size=14)),
+        showlegend=True,
+    )
+
+    return fig
+
+
+def create_governance_probability_distribution(results: "AuditResults") -> go.Figure | None:
+    """Create risk score distribution histograms by outcome.
+
+    Van Calster et al. (2025): RECOMMENDED
+
+    Shows separation between positive/negative outcomes.
+    Wide gap = good discrimination.
+
+    Args:
+        results: AuditResults from FairCareAudit.run()
+
+    Returns:
+        Plotly Figure with overlapping histograms, or None if data unavailable
+    """
+    import numpy as np
+
+    # Access raw data via _audit reference
+    if results._audit is None:
+        return None
+
+    try:
+        df = results._audit.df
+        y_true_col = results._audit.y_true_col
+        y_prob_col = results._audit.y_prob_col
+
+        y_true = np.asarray(df[y_true_col].to_numpy())
+        y_prob = np.asarray(df[y_prob_col].to_numpy())
+    except (AttributeError, KeyError):
+        return None
+
+    # Separate by outcome
+    probs_positive = y_prob[y_true == 1]
+    probs_negative = y_prob[y_true == 0]
+
+    fig = go.Figure()
+
+    # Histogram for negative outcomes
+    fig.add_trace(
+        go.Histogram(
+            x=probs_negative,
+            name="No Outcome (Negative)",
+            marker_color=FAIRCAREAI_COLORS["success"],
+            opacity=0.65,
+            xbins=dict(start=0, end=1, size=0.05),
+            histnorm="probability density",
+        )
+    )
+
+    # Histogram for positive outcomes
+    fig.add_trace(
+        go.Histogram(
+            x=probs_positive,
+            name="Outcome Occurred (Positive)",
+            marker_color=FAIRCAREAI_COLORS["error"],
+            opacity=0.65,
+            xbins=dict(start=0, end=1, size=0.05),
+            histnorm="probability density",
+        )
+    )
+
+    fig.update_layout(
+        title=dict(text="<b>Risk Score Distribution by Outcome</b>", font=dict(size=20)),
+        xaxis=dict(
+            title="Predicted Risk Score",
+            tickformat=".0%",
+            range=[0, 1],
+            tickfont={"size": 14},
+        ),
+        yaxis=dict(
+            title="Proportion of Patients",
+            tickfont={"size": 14},
+        ),
+        barmode="overlay",
+        height=450,
+        margin=dict(l=90, r=40, t=70, b=90),
+        legend=dict(x=0.02, y=0.98, bgcolor="rgba(255,255,255,0.9)", font=dict(size=14)),
+        showlegend=True,
     )
 
     return fig

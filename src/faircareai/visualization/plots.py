@@ -558,7 +558,7 @@ def create_forest_plot(
         ),
         template="faircareai",
         height=calculate_chart_height(len(df), "forest"),
-        margin=dict(l=180, r=100, t=100, b=140),  # Wider left margin; extra bottom for rotated labels
+        margin=dict(l=220, r=100, t=100, b=140),  # Wider left margin for long demographic names; extra bottom for rotated labels
         meta={"description": alt_text},  # WCAG 2.1 screen reader support
     )
 
@@ -693,7 +693,7 @@ def create_disparity_heatmap(
         annotations=annotations,
         template="faircareai",
         height=calculate_chart_height(n_groups, "bar"),
-        margin=dict(l=120, r=40, t=120, b=160),  # Extra bottom margin for rotated labels + annotations
+        margin=dict(l=120, r=80, t=120, b=160),  # Extra bottom margin for rotated labels + annotations
         meta={"description": alt_text},  # WCAG 2.1 screen reader support
     )
 
@@ -860,6 +860,7 @@ def create_metric_comparison_chart(
         legend=LEGEND_POSITIONS["top_horizontal"],
         template="faircareai",
         height=400,
+        margin=dict(l=100, r=50, t=100, b=140),
     )
 
     return fig
@@ -945,7 +946,7 @@ def create_summary_scorecard(
         ),
         template="faircareai",
         height=280,
-        margin=dict(l=20, r=20, t=80, b=40),
+        margin=dict(l=80, r=40, t=80, b=80),
     )
 
     return fig
@@ -1219,7 +1220,7 @@ def create_roc_curve_by_group(
         legend=LEGEND_POSITIONS["bottom_right_inset"],
         template="faircareai",
         height=500,
-        margin=dict(l=80, r=60, t=100, b=120),  # Extra bottom/right margin for legend
+        margin=dict(l=80, r=100, t=100, b=120),  # Extra bottom/right margin for inset legend
         meta={"description": alt_text},  # WCAG 2.1 screen reader support
     )
 
@@ -1671,6 +1672,7 @@ def create_subgroup_heatmap(
         xaxis=dict(
             title=dict(text="Group", font=dict(size=TYPOGRAPHY["axis_title_size"])),
             tickangle=-45,
+            automargin=True,
             tickfont=dict(size=TYPOGRAPHY["tick_size"]),
         ),
         yaxis=dict(
