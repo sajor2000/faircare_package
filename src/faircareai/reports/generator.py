@@ -18,7 +18,9 @@ Report Structure (per newspec.md):
 Methodology: Van Calster et al. (2025), CHAI RAIC Checkpoint 1.
 """
 
+import asyncio
 import html
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
@@ -40,6 +42,62 @@ if TYPE_CHECKING:
 
 
 logger = get_logger(__name__)
+
+
+def _is_in_async_context() -> bool:
+    """Check if we're running inside an asyncio event loop (e.g., Jupyter notebook)."""
+    try:
+        asyncio.get_running_loop()
+        return True
+    except RuntimeError:
+        return False
+
+
+def _run_playwright_pdf_generation(
+    html_content: str,
+    output_path: Path,
+    page_format: str = "Letter",
+    margins: dict | None = None,
+) -> None:
+    """Run Playwright PDF generation, handling async context (Jupyter) safely.
+
+    Args:
+        html_content: HTML string to render to PDF.
+        output_path: Path for output PDF file.
+        page_format: Page format (e.g., "Letter", "A4").
+        margins: Page margins dict with top, right, bottom, left keys.
+    """
+    from playwright.sync_api import sync_playwright
+
+    if margins is None:
+        margins = {"top": "0.5in", "right": "0.5in", "bottom": "0.5in", "left": "0.5in"}
+
+    def _generate_pdf() -> None:
+        with sync_playwright() as p:
+            browser = p.chromium.launch()
+            page = browser.new_page()
+
+            # Load HTML content with timeout protection (60s for complex reports)
+            page.set_content(html_content, wait_until="networkidle", timeout=60000)
+
+            # Generate PDF with print styling
+            page.pdf(
+                path=str(output_path.resolve()),
+                format=page_format,
+                margin=margins,
+                print_background=True,
+            )
+
+            browser.close()
+
+    if _is_in_async_context():
+        # Running in Jupyter or other async context - use thread pool
+        with ThreadPoolExecutor(max_workers=1) as executor:
+            future = executor.submit(_generate_pdf)
+            future.result()  # Wait for completion and raise any exceptions
+    else:
+        # Normal sync context - run directly
+        _generate_pdf()
 
 
 def _validate_output_path(output_path: Path, base_dir: Path | None = None) -> Path:
@@ -97,6 +155,7 @@ def generate_pdf_report(
     output_path: str | Path,
     include_charts: bool = True,
     metric_config: "MetricDisplayConfig | None" = None,
+    results: "AuditResults | None" = None,
 ) -> Path:
     """
     Generate a formal PDF audit report.
@@ -114,6 +173,8 @@ def generate_pdf_report(
         include_charts: If True, embed charts
         metric_config: MetricDisplayConfig controlling which metrics to display.
             If None, defaults to RECOMMENDED metrics only.
+        results: Full AuditResults object for chart generation. If None, charts
+            will be limited or unavailable.
 
     Returns:
         Path to generated PDF file
@@ -123,7 +184,7 @@ def generate_pdf_report(
             Run: pip install playwright && playwright install chromium
     """
     try:
-        from playwright.sync_api import sync_playwright
+        from playwright.sync_api import sync_playwright  # noqa: F401
     except ImportError as err:
         raise ImportError(
             "Playwright is required for PDF generation. Install with: "
@@ -134,25 +195,10 @@ def generate_pdf_report(
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
     # Generate HTML content
-    html_content = _generate_report_html(summary, include_charts)
+    html_content = _generate_report_html(summary, include_charts, results=results)
 
-    # Use Playwright to render HTML to PDF
-    with sync_playwright() as p:
-        browser = p.chromium.launch()
-        page = browser.new_page()
-
-        # Load HTML content with timeout protection (60s for complex reports)
-        page.set_content(html_content, wait_until="networkidle", timeout=60000)
-
-        # Generate PDF with print styling
-        page.pdf(
-            path=str(output_path.resolve()),
-            format="Letter",
-            margin={"top": "0.5in", "right": "0.5in", "bottom": "0.5in", "left": "0.5in"},
-            print_background=True,
-        )
-
-        browser.close()
+    # Use Playwright to render HTML to PDF (handles Jupyter/async context)
+    _run_playwright_pdf_generation(html_content, output_path)
 
     return output_path
 
@@ -298,7 +344,7 @@ def _generate_full_report_html(results: "AuditResults") -> str:
         /* Scientific Publication Style - Large, Clear, Readable */
         body {{
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-            font-size: {TYPOGRAPHY["body_size"]}px;  /* 18px - publication readable */
+            font-size: 16px;
             color: var(--text-color);
             background-color: var(--bg-color);
             line-height: 1.6;
@@ -318,10 +364,10 @@ def _generate_full_report_html(results: "AuditResults") -> str:
             margin-top: 0;
         }}
 
-        /* Publication-style large headers */
-        h1 {{ font-size: {TYPOGRAPHY["heading_size"]}px; margin-bottom: 12px; }}  /* 40px */
-        h2 {{ font-size: {TYPOGRAPHY["subheading_size"]}px; margin-top: 40px; border-bottom: 2px solid var(--primary-color); padding-bottom: 10px; }}  /* 32px */
-        h3 {{ font-size: {TYPOGRAPHY["h3_size"]}px; margin-top: 28px; color: var(--secondary-color); }}  /* 28px */
+        /* Publication-style large headers - fixed sizes for HTML readability */
+        h1 {{ font-size: 32px; margin-bottom: 12px; }}
+        h2 {{ font-size: 24px; margin-top: 40px; border-bottom: 2px solid var(--primary-color); padding-bottom: 10px; }}
+        h3 {{ font-size: 20px; margin-top: 28px; color: var(--secondary-color); }}
 
         .header {{
             background: white;
@@ -332,14 +378,14 @@ def _generate_full_report_html(results: "AuditResults") -> str:
         }}
 
         /* Publication readable metadata */
-        .metadata {{ color: #666; font-size: {TYPOGRAPHY["label_size"]}px; }}  /* 18px */
+        .metadata {{ color: #666; font-size: 14px; }}
 
         .status-badge {{
             display: inline-block;
             padding: 14px 28px;
             border-radius: 6px;
             font-weight: 700;
-            font-size: {TYPOGRAPHY["h3_size"]}px;  /* 28px - prominent */
+            font-size: 18px;
             color: white;
             background-color: {status_color};
             margin: 16px 0;
@@ -371,12 +417,12 @@ def _generate_full_report_html(results: "AuditResults") -> str:
 
         /* Large scorecard numbers */
         .scorecard-value {{
-            font-size: {TYPOGRAPHY["heading_size"]}px;  /* 40px - prominent */
+            font-size: 36px;
             font-weight: 700;
         }}
 
         .scorecard-label {{
-            font-size: {TYPOGRAPHY["label_size"]}px;  /* 18px - readable */
+            font-size: 14px;
             color: #666;
             text-transform: uppercase;
             letter-spacing: 0.5px;
@@ -391,7 +437,7 @@ def _generate_full_report_html(results: "AuditResults") -> str:
             width: 100%;
             border-collapse: collapse;
             margin: 20px 0;
-            font-size: {TYPOGRAPHY["label_size"]}px;  /* 18px - readable */
+            font-size: 15px;
         }}
 
         th, td {{
@@ -403,7 +449,7 @@ def _generate_full_report_html(results: "AuditResults") -> str:
         th {{
             background: var(--bg-color);
             font-weight: 600;
-            font-size: {TYPOGRAPHY["label_size"]}px;  /* 18px */
+            font-size: 15px;
             color: var(--secondary-color);
         }}
 
@@ -460,13 +506,13 @@ def _generate_full_report_html(results: "AuditResults") -> str:
 
         /* Large metric values */
         .metric-value {{
-            font-size: {TYPOGRAPHY["subheading_size"]}px;  /* 32px - prominent */
+            font-size: 28px;
             font-weight: 700;
             color: var(--primary-color);
         }}
 
         .metric-label {{
-            font-size: {TYPOGRAPHY["label_size"]}px;  /* 18px - readable */
+            font-size: 14px;
             color: #666;
         }}
 
@@ -476,7 +522,7 @@ def _generate_full_report_html(results: "AuditResults") -> str:
             text-align: center;
             border-radius: 6px;
             color: #666;
-            font-size: {TYPOGRAPHY["body_size"]}px;
+            font-size: 16px;
         }}
 
         /* Responsive chart grid - single column on tablets/mobile */
@@ -913,7 +959,13 @@ def _generate_subgroup_section(results: "AuditResults") -> str:
         if not isinstance(attr_data, dict):
             continue
 
-        for group_name, group_data in attr_data.items():
+        # Extract groups from nested structure
+        groups_data = attr_data.get("groups", attr_data)
+
+        for group_name, group_data in groups_data.items():
+            # Skip metadata keys
+            if group_name in ("attribute", "threshold", "reference", "disparities"):
+                continue
             if not isinstance(group_data, dict) or "error" in group_data:
                 continue
 
@@ -1025,11 +1077,62 @@ def _generate_subgroup_section(results: "AuditResults") -> str:
 
 
 def _generate_fairness_section(results: "AuditResults") -> str:
-    """Generate Section 5: Fairness Assessment."""
+    """Generate Section 5: Fairness Assessment with metric-specific content."""
+    from faircareai.core.config import FairnessMetric
+
     config = results.config
     metric = config.primary_fairness_metric
     justification = config.fairness_justification or "Not provided"
 
+    # Metric-specific descriptions and what to look for
+    metric_info = {
+        FairnessMetric.DEMOGRAPHIC_PARITY: {
+            "name": "Demographic Parity",
+            "description": "Equal selection rates across groups regardless of true outcomes.",
+            "what_to_look_for": "Selection rate differences should be small. Large differences mean some groups are selected more/less often.",
+            "key_metric": "selection_rate_diff",
+            "threshold_note": "Differences < 0.10 (10%) are typically acceptable.",
+        },
+        FairnessMetric.EQUALIZED_ODDS: {
+            "name": "Equalized Odds",
+            "description": "Equal true positive rates AND false positive rates across groups.",
+            "what_to_look_for": "Both TPR and FPR differences should be small. This ensures equal benefit AND equal burden across groups.",
+            "key_metric": "equalized_odds",
+            "threshold_note": "Max(TPR diff, FPR diff) < 0.10 is typically acceptable.",
+        },
+        FairnessMetric.EQUAL_OPPORTUNITY: {
+            "name": "Equal Opportunity",
+            "description": "Equal true positive rates across groups (focuses on benefit, not burden).",
+            "what_to_look_for": "TPR differences should be small. This ensures all groups with the condition are equally likely to be identified.",
+            "key_metric": "equal_opportunity",
+            "threshold_note": "TPR differences < 0.10 are typically acceptable.",
+        },
+        FairnessMetric.PREDICTIVE_PARITY: {
+            "name": "Predictive Parity",
+            "description": "Equal positive predictive value (PPV) across groups.",
+            "what_to_look_for": "PPV differences should be small. A positive prediction should mean the same thing for all groups.",
+            "key_metric": "ppv_diff",
+            "threshold_note": "PPV differences < 0.10 are typically acceptable.",
+        },
+        FairnessMetric.CALIBRATION: {
+            "name": "Calibration",
+            "description": "Predicted probabilities match actual outcomes equally across groups.",
+            "what_to_look_for": "Calibration error differences should be small. A 30% prediction should mean 30% risk for all groups.",
+            "key_metric": "calibration_diff",
+            "threshold_note": "Calibration differences < 0.05 are typically acceptable.",
+        },
+    }
+
+    # Get info for selected metric
+    selected_info = metric_info.get(metric, {
+        "name": "Not Specified",
+        "description": "No primary fairness metric selected.",
+        "what_to_look_for": "Review all metrics below.",
+        "key_metric": None,
+        "threshold_note": "Differences < 0.10 are typically acceptable.",
+    })
+
+    # Build table rows with all metrics, highlighting the primary one
     fairness_rows = ""
     for attr_name, attr_data in results.fairness_metrics.items():
         if not isinstance(attr_data, dict):
@@ -1037,69 +1140,104 @@ def _generate_fairness_section(results: "AuditResults") -> str:
 
         summary = attr_data.get("summary", {})
 
-        # Equal opportunity
+        # Demographic Parity (selection rate)
+        dp = summary.get("demographic_parity", {})
+        dp_diff = dp.get("worst_diff", 0) if dp else 0
+        dp_pass = dp.get("within_threshold", True) if dp else True
+
+        # Equal Opportunity (TPR)
         eo = summary.get("equal_opportunity", {})
         eo_diff = eo.get("worst_diff", 0) if eo else 0
         eo_pass = eo.get("within_threshold", True) if eo else True
-        eo_status = "PASS" if eo_pass else "FLAG"
-        eo_class = "pass" if eo_pass else "fail"
 
-        # Equalized odds
+        # Equalized Odds (TPR + FPR)
         eq = summary.get("equalized_odds", {})
         eq_diff = eq.get("worst_diff", 0) if eq else 0
         eq_pass = eq.get("within_threshold", True) if eq else True
-        eq_status = "PASS" if eq_pass else "FLAG"
-        eq_class = "pass" if eq_pass else "fail"
+
+        # Predictive Parity (PPV)
+        pp = summary.get("predictive_parity", {})
+        pp_diff = pp.get("worst_diff", 0) if pp else 0
+        pp_pass = pp.get("within_threshold", True) if pp else True
+
+        # Calibration
+        cal = summary.get("calibration", {})
+        cal_diff = cal.get("worst_diff", 0) if cal else 0
+        cal_pass = cal.get("within_threshold", True) if cal else True
+
+        # Helper to format cell with highlighting for primary metric
+        def format_cell(value: float, passed: bool, is_primary: bool) -> str:
+            status = "PASS" if passed else "FLAG"
+            status_class = "pass" if passed else "fail"
+            highlight = ' style="background: #e8f4f8; font-weight: bold;"' if is_primary else ""
+            return f'<td{highlight}>{abs(value):.3f}</td><td class="{status_class}"{highlight}>{status}</td>'
+
+        # Determine which metric is primary for this row
+        is_dp_primary = metric == FairnessMetric.DEMOGRAPHIC_PARITY
+        is_eo_primary = metric == FairnessMetric.EQUAL_OPPORTUNITY
+        is_eq_primary = metric == FairnessMetric.EQUALIZED_ODDS
+        is_pp_primary = metric == FairnessMetric.PREDICTIVE_PARITY
+        is_cal_primary = metric == FairnessMetric.CALIBRATION
 
         fairness_rows += f'''
         <tr>
             <td>{attr_name}</td>
-            <td>{abs(eo_diff):.3f}</td>
-            <td class="{eo_class}">{eo_status}</td>
-            <td>{eq_diff:.3f}</td>
-            <td class="{eq_class}">{eq_status}</td>
+            {format_cell(dp_diff, dp_pass, is_dp_primary)}
+            {format_cell(eo_diff, eo_pass, is_eo_primary)}
+            {format_cell(eq_diff, eq_pass, is_eq_primary)}
+            {format_cell(pp_diff, pp_pass, is_pp_primary)}
+            {format_cell(cal_diff, cal_pass, is_cal_primary)}
         </tr>
         '''
+
+    # Primary metric badge color
+    metric_color = "#0072B2" if metric else "#666"
 
     return f"""
     <section class="section">
         <h2>Section 5: Fairness Assessment</h2>
 
-        <h3>Selected Fairness Metric</h3>
-        <p><strong>Primary Metric:</strong> {metric.value if metric else "Not specified"}</p>
-        <p><strong>Justification:</strong> {justification}</p>
+        <div style="background: #e8f4f8; border: 2px solid {metric_color}; padding: 20px; margin-bottom: 24px; border-radius: 8px;">
+            <h3 style="margin-top: 0; color: {metric_color};">Primary Fairness Metric: {selected_info["name"]}</h3>
+            <p style="margin: 8px 0;"><strong>Definition:</strong> {selected_info["description"]}</p>
+            <p style="margin: 8px 0;"><strong>What to look for:</strong> {selected_info["what_to_look_for"]}</p>
+            <p style="margin: 8px 0;"><strong>Threshold:</strong> {selected_info["threshold_note"]}</p>
+            <p style="margin: 8px 0 0 0; color: #666;"><strong>Justification:</strong> {justification}</p>
+        </div>
 
-        <h3>Fairness Metrics by Attribute</h3>
-        <p style="color: #666; font-size: 16px; margin-bottom: 16px;">
-            <strong>What to look for:</strong> Differences less than 0.10 (10 percentage points) are typically acceptable.
-            Larger differences may indicate the model treats groups differently.
+        <h3>All Fairness Metrics by Attribute</h3>
+        <p style="color: #666; font-size: 14px; margin-bottom: 16px;">
+            Your selected metric is <strong>highlighted in blue</strong>. Other metrics shown for completeness.
         </p>
 
-        <table>
+        <div style="overflow-x: auto;">
+        <table style="font-size: 14px;">
             <thead>
                 <tr>
                     <th>Attribute</th>
-                    <th>TPR Difference<br><span style="font-weight: normal; font-size: 12px;">(Equal Opportunity)</span></th>
-                    <th>Status</th>
-                    <th>Equalized Odds Diff<br><span style="font-weight: normal; font-size: 12px;">(TPR + FPR)</span></th>
-                    <th>Status</th>
+                    <th colspan="2">Demographic Parity<br><span style="font-weight: normal; font-size: 11px;">Selection Rate Diff</span></th>
+                    <th colspan="2">Equal Opportunity<br><span style="font-weight: normal; font-size: 11px;">TPR Diff</span></th>
+                    <th colspan="2">Equalized Odds<br><span style="font-weight: normal; font-size: 11px;">Max(TPR, FPR) Diff</span></th>
+                    <th colspan="2">Predictive Parity<br><span style="font-weight: normal; font-size: 11px;">PPV Diff</span></th>
+                    <th colspan="2">Calibration<br><span style="font-weight: normal; font-size: 11px;">Cal Error Diff</span></th>
                 </tr>
             </thead>
             <tbody>
                 {fairness_rows}
             </tbody>
         </table>
+        </div>
 
         <div style="margin-top: 20px; padding: 16px; background: #fffdf0; border-left: 4px solid #F0E442; border-radius: 4px;">
-            <h4 style="margin-top: 0; color: #856404;">Understanding Fairness Metrics:</h4>
-            <ul style="margin-bottom: 0;">
-                <li><strong>TPR Difference (Equal Opportunity):</strong> Do all groups have similar rates of correctly identified cases?
-                    Large differences mean the model "misses" more cases in certain groups.</li>
-                <li><strong>Equalized Odds:</strong> Combines both true positive rate and false positive rate differences.
-                    Measures overall fairness in both detecting cases and avoiding false alarms.</li>
-                <li><strong>Impossibility Theorem:</strong> When base rates (prevalence) differ between groups,
-                    no model can satisfy all fairness criteria simultaneously. Trade-offs are necessary.</li>
-                <li><strong>Threshold:</strong> Differences &lt;0.10 are generally acceptable in healthcare AI.</li>
+            <h4 style="margin-top: 0; color: #856404;">Why Your Metric Choice Matters:</h4>
+            <p style="margin-bottom: 8px;">The <strong>impossibility theorem</strong> proves that when base rates differ between groups,
+            no model can satisfy all fairness criteria simultaneously. Your choice reflects your values:</p>
+            <ul style="margin-bottom: 0; font-size: 14px;">
+                <li><strong>Demographic Parity:</strong> Prioritizes equal selection rates (good for resource allocation)</li>
+                <li><strong>Equal Opportunity:</strong> Prioritizes equal detection of true cases (good for screening)</li>
+                <li><strong>Equalized Odds:</strong> Balances detection AND false alarms (good for interventions)</li>
+                <li><strong>Predictive Parity:</strong> Prioritizes equal meaning of positive predictions</li>
+                <li><strong>Calibration:</strong> Prioritizes accurate risk communication across groups</li>
             </ul>
         </div>
     </section>
@@ -1173,8 +1311,15 @@ def _generate_governance_section(results: "AuditResults") -> str:
 def _generate_report_html(
     summary: AuditSummary,
     include_charts: bool = True,
+    results: "AuditResults | None" = None,
 ) -> str:
-    """Generate the HTML content for the report."""
+    """Generate the HTML content for the report.
+
+    Args:
+        summary: AuditSummary with basic audit info.
+        include_charts: If True, generate charts.
+        results: Full AuditResults for chart generation. If None, charts will be limited.
+    """
 
     from faircareai.visualization.tables import create_plain_language_summary
 
@@ -1199,20 +1344,43 @@ def _generate_report_html(
         summary.worst_disparity_value,
     )
 
-    # Generate charts as SVG if requested
+    # Generate charts if requested
     charts_html = ""
-    if include_charts and summary.metrics_df is not None:
-        try:
-            from faircareai.visualization.altair_plots import create_forest_plot_static
+    if include_charts:
+        if results is not None:
+            # Use full AuditResults for comprehensive charts
+            try:
+                overall_html = _render_governance_overall_figures(results)
+                subgroup_html = _render_governance_subgroup_figures(results)
+                charts_html = f"""
+                <div class="charts-section">
+                    <h3>Overall Performance</h3>
+                    {overall_html}
+                    <h3>Subgroup Performance</h3>
+                    {subgroup_html}
+                </div>
+                """
+            except (ValueError, TypeError, KeyError) as e:
+                logger.warning("Chart generation failed: %s", e)
+                charts_html = f'<p class="chart-placeholder">Charts could not be generated: {html.escape(str(e))}</p>'
+            except ImportError as e:
+                logger.error("Chart library not available: %s", e)
+                charts_html = '<p class="chart-placeholder">Chart library missing. Install with: pip install \'faircareai[viz]\'</p>'
+        elif summary.metrics_df is not None and len(summary.metrics_df) > 0:
+            # Fall back to forest plot from metrics_df
+            try:
+                from faircareai.visualization.altair_plots import create_forest_plot_static
 
-            chart = create_forest_plot_static(summary.metrics_df, metric="tpr")
-            charts_html = f'<div class="chart-container">{chart.to_html()}</div>'
-        except (ValueError, TypeError, KeyError) as e:
-            logger.warning("Forest plot generation failed: %s", e)
-            charts_html = '<p class="chart-placeholder">Charts could not be generated.</p>'
-        except ImportError as e:
-            logger.error("Chart library not available: %s", e)
-            charts_html = '<p class="chart-placeholder">Chart library missing. Install with: pip install \'faircareai[viz]\'</p>'
+                chart = create_forest_plot_static(summary.metrics_df, metric="tpr")
+                charts_html = f'<div class="chart-container">{chart.to_html()}</div>'
+            except (ValueError, TypeError, KeyError) as e:
+                logger.warning("Forest plot generation failed: %s", e)
+                charts_html = '<p class="chart-placeholder">Charts could not be generated.</p>'
+            except ImportError as e:
+                logger.error("Chart library not available: %s", e)
+                charts_html = '<p class="chart-placeholder">Chart library missing. Install with: pip install \'faircareai[viz]\'</p>'
+        else:
+            charts_html = '<p class="chart-placeholder">No chart data available.</p>'
 
     html = f"""<!DOCTYPE html>
 <html lang="en">
@@ -1237,7 +1405,7 @@ def _generate_report_html(
 
         body {{
             font-family: {TYPOGRAPHY["data_font"]};
-            font-size: {TYPOGRAPHY["body_size"]}px;
+            font-size: 16px;
             color: var(--text-color);
             background-color: var(--bg-color);
             line-height: 1.6;
@@ -1253,12 +1421,12 @@ def _generate_report_html(
         }}
 
         h1 {{
-            font-size: 28px;
+            font-size: 32px;
             margin-bottom: 8px;
         }}
 
         h2 {{
-            font-size: 22px;
+            font-size: 24px;
             margin-top: 40px;
             border-bottom: 2px solid var(--text-color);
             padding-bottom: 8px;
@@ -1342,7 +1510,19 @@ def _generate_report_html(
                 padding: 20px;
             }}
         }}
+
+        .charts-section {{
+            margin: 30px 0;
+        }}
+
+        .charts-section h3 {{
+            font-size: 20px;
+            margin-top: 30px;
+            margin-bottom: 15px;
+            color: #2c5282;
+        }}
     </style>
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
 </head>
 <body>
     <header class="header">
@@ -1677,7 +1857,7 @@ def generate_governance_pdf_report(
             Run: pip install playwright && playwright install chromium
     """
     try:
-        from playwright.sync_api import sync_playwright
+        from playwright.sync_api import sync_playwright  # noqa: F401
     except ImportError as err:
         raise ImportError(
             "Playwright is required for PDF generation. Install with: "
@@ -1696,23 +1876,8 @@ def generate_governance_pdf_report(
         '<script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script></head>',
     )
 
-    # Use Playwright to render HTML to PDF
-    with sync_playwright() as p:
-        browser = p.chromium.launch()
-        page = browser.new_page()
-
-        # Load HTML content with timeout protection (60s for complex reports)
-        page.set_content(html_content, wait_until="networkidle", timeout=60000)
-
-        # Generate PDF with print styling
-        page.pdf(
-            path=str(output_path.resolve()),
-            format="Letter",
-            margin={"top": "0.5in", "right": "0.5in", "bottom": "0.5in", "left": "0.5in"},
-            print_background=True,
-        )
-
-        browser.close()
+    # Use Playwright to render HTML to PDF (handles Jupyter/async context)
+    _run_playwright_pdf_generation(html_content, output_path)
 
     return output_path
 
@@ -1804,6 +1969,22 @@ def _generate_governance_html(results: "AuditResults") -> str:
     worst_disparity = abs(gov.get("worst_disparity_value", 0))
     worst_metric = gov.get("worst_disparity_metric", "metric")
     worst_group = gov.get("worst_disparity_group", "group")
+
+    # Primary fairness metric information
+    from faircareai.core.config import FairnessMetric
+
+    primary_metric = results.config.primary_fairness_metric
+    metric_descriptions = {
+        FairnessMetric.DEMOGRAPHIC_PARITY: ("Demographic Parity", "Equal selection rates across groups"),
+        FairnessMetric.EQUALIZED_ODDS: ("Equalized Odds", "Equal TPR and FPR across groups"),
+        FairnessMetric.EQUAL_OPPORTUNITY: ("Equal Opportunity", "Equal detection rates (TPR) across groups"),
+        FairnessMetric.PREDICTIVE_PARITY: ("Predictive Parity", "Equal positive predictive values across groups"),
+        FairnessMetric.CALIBRATION: ("Calibration", "Equal calibration accuracy across groups"),
+    }
+    metric_name, metric_desc = metric_descriptions.get(
+        primary_metric, ("Not Specified", "No primary fairness metric was selected")
+    )
+    metric_justification = results.config.fairness_justification or "Not provided"
 
     html = f"""<!DOCTYPE html>
 <html lang="en">
@@ -2138,8 +2319,16 @@ def _generate_governance_html(results: "AuditResults") -> str:
         <section class="section">
             <h2 class="narrative-headline">2. Where Do Disparities Exist?</h2>
 
+            <!-- Primary Fairness Metric Box -->
+            <div style="background: #e8f4f8; border: 2px solid #0072B2; padding: 20px; margin-bottom: 24px; border-radius: 8px;">
+                <h3 style="margin-top: 0; color: #0072B2; font-size: 18px;">Selected Fairness Metric: {metric_name}</h3>
+                <p style="margin: 8px 0; color: #333;"><strong>Definition:</strong> {metric_desc}</p>
+                <p style="margin: 8px 0 0 0; color: #666; font-size: 14px;"><strong>Justification:</strong> {metric_justification}</p>
+            </div>
+
             <p style="color: #666; font-size: 16px; margin-bottom: 20px;">
-                Performance varies across demographic groups. Below shows how the model performs for each population.
+                Performance varies across demographic groups. Charts corresponding to your selected metric are
+                <span style="background: rgba(0, 114, 178, 0.1); padding: 2px 6px; border-radius: 3px;">highlighted in blue</span>.
             </p>
 
             <!-- Callout Box for Key Statistics -->

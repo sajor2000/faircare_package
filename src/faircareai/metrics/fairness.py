@@ -160,6 +160,7 @@ def compute_fairness_metrics(
     results["fpr_diff"] = {}
     results["equalized_odds_diff"] = {}
     results["ppv_ratio"] = {}
+    results["ppv_diff"] = {}
     results["calibration_diff"] = {}
 
     ref_selection = ref_metrics.get("selection_rate", 0)
@@ -197,12 +198,13 @@ def compute_fairness_metrics(
             max(abs(tpr - ref_tpr), abs(fpr - ref_fpr))
         )
 
-        # Predictive parity (PPV ratio)
+        # Predictive parity (PPV ratio and difference)
         ppv = group_data.get("ppv", 0)
         if ref_ppv > 0:
             results["ppv_ratio"][str(group)] = float(ppv / ref_ppv)
         else:
             results["ppv_ratio"][str(group)] = None
+        results["ppv_diff"][str(group)] = float(ppv - ref_ppv)
 
         # Calibration difference
         cal = group_data.get("mean_calibration_error", 0)
@@ -252,15 +254,40 @@ def _compute_fairness_summary(metrics: dict) -> dict[str, Any]:
             "within_threshold": worst_eo <= EQUALIZED_ODDS_THRESHOLD,
         }
 
-    # Predictive parity - filter None values (occur when reference PPV is 0)
+    # Predictive parity - use PPV difference for consistency with other metrics
+    ppv_diffs = list(metrics.get("ppv_diff", {}).values())
     ppv_ratios_raw = list(metrics.get("ppv_ratio", {}).values())
     ppv_ratios = [r for r in ppv_ratios_raw if r is not None]
-    if ppv_ratios:
-        min_ppv = min(ppv_ratios)
-        worst_ppv = min_ppv if min_ppv < 1 else max(ppv_ratios)
+    if ppv_diffs or ppv_ratios:
+        # Compute worst_diff from ppv_diff if available
+        worst_ppv_diff = max(ppv_diffs, key=abs) if ppv_diffs else None
+        # Compute worst_ratio for backward compatibility
+        worst_ratio = None
+        if ppv_ratios:
+            min_ppv = min(ppv_ratios)
+            worst_ratio = min_ppv if min_ppv < 1 else max(ppv_ratios)
+        # Determine within_threshold based on worst_diff if available, else ratio
+        if worst_ppv_diff is not None:
+            within_threshold = abs(worst_ppv_diff) <= EQUALIZED_ODDS_THRESHOLD
+        elif worst_ratio is not None:
+            within_threshold = DEMOGRAPHIC_PARITY_LOWER <= worst_ratio <= DEMOGRAPHIC_PARITY_UPPER
+        else:
+            within_threshold = True
         summary["predictive_parity"] = {
-            "worst_ratio": float(worst_ppv),
-            "within_threshold": DEMOGRAPHIC_PARITY_LOWER <= worst_ppv <= DEMOGRAPHIC_PARITY_UPPER,
+            "worst_diff": float(worst_ppv_diff) if worst_ppv_diff is not None else 0.0,
+            "worst_ratio": float(worst_ratio) if worst_ratio is not None else None,
+            "within_threshold": within_threshold,
+        }
+
+    # Calibration
+    cal_diffs = list(metrics.get("calibration_diff", {}).values())
+    if cal_diffs:
+        worst_cal = max(cal_diffs, key=abs)
+        # Calibration threshold: difference in mean calibration error should be small
+        # Using 0.05 (5 percentage points) as threshold for clinical significance
+        summary["calibration"] = {
+            "worst_diff": float(worst_cal),
+            "within_threshold": abs(worst_cal) <= 0.05,
         }
 
     return summary

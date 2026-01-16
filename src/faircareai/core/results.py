@@ -10,6 +10,7 @@ organizational values, and governance frameworks.
 
 import json
 from dataclasses import dataclass, field
+from datetime import date
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -429,9 +430,9 @@ class AuditResults:
             return generate_governance_pdf_report(self, path, metric_config=metric_config)
         else:
             metric_config = MetricDisplayConfig.data_scientist(include_optional=include_optional)
-            # Convert AuditResults to AuditSummary for generator
+            # Convert AuditResults to AuditSummary for generator, but also pass full results for charts
             summary = self._to_audit_summary()
-            return generate_pdf_report(summary, path, metric_config=metric_config)
+            return generate_pdf_report(summary, path, metric_config=metric_config, results=self)
 
     def to_pptx(
         self,
@@ -570,7 +571,7 @@ class AuditResults:
 
         return AuditSummary(
             model_name=self.config.model_name,
-            audit_date=self.config.report_date or "",
+            audit_date=self.config.report_date or date.today().isoformat(),
             n_samples=self.descriptive_stats.get("cohort_overview", {}).get("n_total", 0),
             n_groups=n_groups,
             threshold=self.threshold,

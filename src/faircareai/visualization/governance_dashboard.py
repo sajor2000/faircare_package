@@ -244,7 +244,8 @@ def create_executive_summary(results: "AuditResults") -> go.Figure:
         title=dict(
             text=f"<b>Governance Review: {results.config.model_name}</b><br>"
             f"<sup>Version {results.config.model_version}</sup>",
-            x=0.5,
+            x=0,
+            xanchor="left",
             font=dict(size=18),
         ),
         height=800,
@@ -424,7 +425,8 @@ def create_go_nogo_scorecard(results: "AuditResults") -> go.Figure:
                 f"<span style='color:{overall_color}; font-size:24px'>{overall}</span><br>"
                 f"<sup>{n_pass} Pass | {n_warn} Near | {n_fail} Outside</sup>"
             ),
-            x=0.5,
+            x=0,
+            xanchor="left",
             font=dict(size=16),
         ),
         height=500,
@@ -521,7 +523,12 @@ def _build_checklist(results: "AuditResults") -> list[dict]:
     # Check for small subgroups
     subgroup_ok = True
     for _attr_name, attr_data in results.subgroup_performance.items():
-        for _group_name, group_data in attr_data.items():
+        # Extract groups from nested structure
+        groups_data = attr_data.get("groups", attr_data) if isinstance(attr_data, dict) else {}
+        for group_name, group_data in groups_data.items():
+            # Skip metadata keys
+            if group_name in ("attribute", "threshold", "reference", "disparities"):
+                continue
             if isinstance(group_data, dict):
                 n = group_data.get("n", 0)
                 if n < 30:
@@ -589,7 +596,13 @@ def create_fairness_dashboard(results: "AuditResults") -> go.Figure:
         if not isinstance(attr_data, dict):
             continue
 
-        for group_name, group_data in attr_data.items():
+        # Extract groups from nested structure
+        groups_data = attr_data.get("groups", attr_data)
+
+        for group_name, group_data in groups_data.items():
+            # Skip metadata keys
+            if group_name in ("attribute", "threshold", "reference", "disparities"):
+                continue
             if not isinstance(group_data, dict) or "error" in group_data:
                 continue
 
@@ -768,7 +781,8 @@ def create_fairness_dashboard(results: "AuditResults") -> go.Figure:
     fig.update_layout(
         title=dict(
             text=f"<b>Fairness Dashboard: {results.config.model_name}</b>",
-            x=0.5,
+            x=0,
+            xanchor="left",
             font=dict(size=16),
         ),
         height=1000,  # Taller for more spacing
@@ -821,13 +835,19 @@ def plot_subgroup_comparison(
         if not isinstance(attr_data, dict):
             continue
 
+        # Extract groups from nested structure
+        groups_data = attr_data.get("groups", attr_data)
+
         groups = []
         values = []
         errors_low = []
         errors_high = []
         colors = []
 
-        for group_name, group_data in attr_data.items():
+        for group_name, group_data in groups_data.items():
+            # Skip metadata keys
+            if group_name in ("attribute", "threshold", "reference", "disparities"):
+                continue
             if not isinstance(group_data, dict) or "error" in group_data:
                 continue
 
@@ -886,7 +906,8 @@ def plot_subgroup_comparison(
     fig.update_layout(
         title=dict(
             text=f"Subgroup {metric_labels.get(metric, metric)} Comparison",
-            x=0.5,
+            x=0,
+            xanchor="left",
         ),
         xaxis_title="Subgroup",
         yaxis_title=metric_labels.get(metric, metric),
@@ -1157,7 +1178,10 @@ def create_governance_overall_figures(results: "AuditResults") -> dict[str, Any]
     return figures
 
 
-def create_governance_subgroup_figures(results: "AuditResults") -> dict[str, dict[str, go.Figure]]:
+def create_governance_subgroup_figures(
+    results: "AuditResults",
+    primary_metric: "FairnessMetric | None" = None,
+) -> dict[str, dict[str, go.Figure]]:
     """Create subgroup performance figures for governance report.
 
     For each sensitive attribute, generates 4 figures (Van Calster 4):
@@ -1167,13 +1191,31 @@ def create_governance_subgroup_figures(results: "AuditResults") -> dict[str, dic
     4. Selection Rate by Subgroup - Demographic parity check
 
     Each figure includes plain language explanations per the governance spec.
+    Charts corresponding to the primary_metric are visually highlighted.
 
     Args:
         results: AuditResults from FairCareAudit.run().
+        primary_metric: The primary fairness metric to highlight. If None,
+            uses results.config.primary_fairness_metric.
 
     Returns:
         Dict mapping attribute name to dict of figure title -> Plotly Figure.
     """
+    from faircareai.core.config import FairnessMetric
+
+    # Get primary metric from results if not provided
+    if primary_metric is None:
+        primary_metric = getattr(results.config, "primary_fairness_metric", None)
+
+    # Map fairness metrics to chart keys for highlighting
+    metric_to_chart = {
+        FairnessMetric.DEMOGRAPHIC_PARITY: "Selection Rate by Subgroup",
+        FairnessMetric.EQUAL_OPPORTUNITY: "Sensitivity by Subgroup",
+        FairnessMetric.EQUALIZED_ODDS: "Sensitivity by Subgroup",  # TPR is part of EO
+        FairnessMetric.PREDICTIVE_PARITY: None,  # PPV not shown in standard charts
+        FairnessMetric.CALIBRATION: None,  # Calibration not shown in standard charts
+    }
+    primary_chart_key = metric_to_chart.get(primary_metric) if primary_metric else None
     # Plain language explanations for Van Calster 4 visualizations
     SUBGROUP_EXPLANATIONS = {
         "auroc": (
@@ -1247,6 +1289,11 @@ def create_governance_subgroup_figures(results: "AuditResults") -> dict[str, dic
             for ref in is_reference
         ]
 
+        # Determine which charts correspond to the primary metric
+        is_tpr_primary = primary_metric in (FairnessMetric.EQUAL_OPPORTUNITY, FairnessMetric.EQUALIZED_ODDS)
+        is_fpr_primary = primary_metric == FairnessMetric.EQUALIZED_ODDS
+        is_selection_primary = primary_metric == FairnessMetric.DEMOGRAPHIC_PARITY
+
         # 1. AUROC by Subgroup
         fig_auroc = _create_subgroup_bar_chart(
             groups,
@@ -1259,10 +1306,11 @@ def create_governance_subgroup_figures(results: "AuditResults") -> dict[str, dic
             explanation=SUBGROUP_EXPLANATIONS["auroc"],
             y_axis_title="AUROC (Model Accuracy Score)",
             x_axis_title="Demographic Group",
+            is_primary_metric=False,  # AUROC not directly a fairness metric
         )
         figures["AUROC by Subgroup"] = fig_auroc
 
-        # 2. TPR (Sensitivity) by Subgroup
+        # 2. TPR (Sensitivity) by Subgroup - Equal Opportunity / Equalized Odds
         fig_tpr = _create_subgroup_bar_chart(
             groups,
             [v * 100 for v in tpr_vals],
@@ -1274,10 +1322,11 @@ def create_governance_subgroup_figures(results: "AuditResults") -> dict[str, dic
             explanation=SUBGROUP_EXPLANATIONS["sensitivity"],
             y_axis_title="True Positive Rate (%)",
             x_axis_title="Demographic Group",
+            is_primary_metric=is_tpr_primary,
         )
         figures["Sensitivity by Subgroup"] = fig_tpr
 
-        # 3. FPR by Subgroup
+        # 3. FPR by Subgroup - Equalized Odds
         fig_fpr = _create_subgroup_bar_chart(
             groups,
             [v * 100 for v in fpr_vals],
@@ -1289,10 +1338,11 @@ def create_governance_subgroup_figures(results: "AuditResults") -> dict[str, dic
             explanation=SUBGROUP_EXPLANATIONS["fpr"],
             y_axis_title="False Positive Rate (%)",
             x_axis_title="Demographic Group",
+            is_primary_metric=is_fpr_primary,
         )
         figures["FPR by Subgroup"] = fig_fpr
 
-        # 4. Selection Rate by Subgroup
+        # 4. Selection Rate by Subgroup - Demographic Parity
         fig_sel = _create_subgroup_bar_chart(
             groups,
             [v * 100 for v in selection_vals],
@@ -1304,6 +1354,7 @@ def create_governance_subgroup_figures(results: "AuditResults") -> dict[str, dic
             explanation=SUBGROUP_EXPLANATIONS["selection"],
             y_axis_title="Selection Rate (% flagged)",
             x_axis_title="Demographic Group",
+            is_primary_metric=is_selection_primary,
         )
         figures["Selection Rate by Subgroup"] = fig_sel
 
@@ -1324,6 +1375,7 @@ def _create_subgroup_bar_chart(
     explanation: str = "",
     y_axis_title: str = "Value",
     x_axis_title: str = "Group",
+    is_primary_metric: bool = False,
 ) -> go.Figure:
     """Create a simplified bar chart for subgroup comparison.
 
@@ -1339,6 +1391,8 @@ def _create_subgroup_bar_chart(
         explanation: Plain language explanation for non-technical audiences.
         y_axis_title: Descriptive label for Y-axis.
         x_axis_title: Descriptive label for X-axis.
+        is_primary_metric: If True, adds visual highlighting to indicate
+            this chart corresponds to the selected primary fairness metric.
 
     Returns:
         Plotly Figure.
@@ -1376,8 +1430,16 @@ def _create_subgroup_bar_chart(
     # No in-chart annotations - they overlap with labels
     # Explanation text will be added via HTML wrapper in generator.py
 
+    # Add visual highlighting for primary metric
+    if is_primary_metric:
+        title_text = f"<b>{title}</b><br><span style='font-size:12px; color:#0072B2;'>★ YOUR SELECTED FAIRNESS METRIC</span>"
+        plot_bgcolor = "rgba(0, 114, 178, 0.05)"  # Light blue background
+    else:
+        title_text = f"<b>{title}</b>"
+        plot_bgcolor = "white"
+
     fig.update_layout(
-        title=dict(text=f"<b>{title}</b>", font=dict(size=16)),
+        title=dict(text=title_text, font=dict(size=16), x=0, xanchor="left"),
         xaxis=dict(
             title=x_axis_title,
             tickfont={"size": 11},
@@ -1395,6 +1457,7 @@ def _create_subgroup_bar_chart(
         height=380,  # Good height for chart
         margin=dict(l=80, r=40, t=100, b=160),  # Top: long titles, bottom: rotated labels
         showlegend=False,
+        plot_bgcolor=plot_bgcolor,
     )
 
     return fig

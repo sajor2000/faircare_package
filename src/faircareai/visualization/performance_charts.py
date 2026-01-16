@@ -223,7 +223,8 @@ def plot_discrimination_curves(
     fig.update_layout(
         title=dict(
             text=f"Model Discrimination: AUROC = {auroc:.3f} {auroc_ci}",
-            x=0.5,
+            x=0,
+            xanchor="left",
         ),
         height=450,
         showlegend=True,
@@ -346,7 +347,7 @@ def plot_calibration_curve(
     # Apply theme
     fig = apply_faircareai_theme(fig)
     fig.update_layout(
-        title=dict(text=title_text, x=0.5),
+        title=dict(text=title_text, x=0, xanchor="left"),
         xaxis_title=x_axis_title,
         yaxis_title=y_axis_title,
         height=500,
@@ -398,7 +399,7 @@ def plot_threshold_analysis(
         )
         fig = apply_faircareai_theme(fig)
         fig.update_layout(
-            title=dict(text="Threshold Selection Impact", x=0.5),
+            title=dict(text="Threshold Selection Impact", x=0, xanchor="left"),
             height=300,
         )
         return fig
@@ -504,7 +505,7 @@ def plot_threshold_analysis(
     # Apply theme
     fig = apply_faircareai_theme(fig)
     fig.update_layout(
-        title=dict(text="Threshold Selection Impact", x=0.5),
+        title=dict(text="Threshold Selection Impact", x=0, xanchor="left"),
         height=600,
         showlegend=True,
         legend=LEGEND_POSITIONS["top_horizontal"],
@@ -620,7 +621,8 @@ def plot_decision_curve(
     fig.update_layout(
         title=dict(
             text=title_text,
-            x=0.5,
+            x=0,
+            xanchor="left",
         ),
         xaxis_title=x_axis_title,
         yaxis_title=y_axis_title,
@@ -715,7 +717,7 @@ def plot_confusion_matrix(results: AuditResults) -> go.Figure:
     # Apply theme
     fig = apply_faircareai_theme(fig)
     fig.update_layout(
-        title=dict(text=f"Confusion Matrix at Threshold = {threshold:.2f}", x=0.5),
+        title=dict(text=f"Confusion Matrix at Threshold = {threshold:.2f}", x=0, xanchor="left"),
         xaxis_title="Predicted",
         yaxis_title="Actual",
         height=400,
@@ -892,7 +894,8 @@ def plot_performance_summary(
         fig.update_layout(
             title=dict(
                 text=f"Model Performance Summary - {results.config.model_name}",
-                x=0.5,
+                x=0,
+                xanchor="left",
             ),
             height=600,
             showlegend=False,
@@ -909,7 +912,8 @@ def plot_performance_summary(
         fig.update_layout(
             title=dict(
                 text=f"Model Discrimination (AUROC) - {results.config.model_name}",
-                x=0.5,
+                x=0,
+                xanchor="left",
             ),
             height=350,
             showlegend=False,
