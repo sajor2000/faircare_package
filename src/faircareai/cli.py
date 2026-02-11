@@ -126,11 +126,11 @@ def dashboard(port: int, host: str) -> None:
     "--format",
     "output_format",
     type=click.Choice(
-        ["html", "pdf", "pptx", "json", "model-card", "repro-bundle"],
+        ["html", "pdf", "pptx", "json", "png", "model-card", "repro-bundle"],
         case_sensitive=False,
     ),
     help=(
-        "Output format (html, pdf, pptx, json, model-card, repro-bundle). "
+        "Output format (html, pdf, pptx, json, png, model-card, repro-bundle). "
         "Overrides file suffix if provided."
     ),
 )
@@ -297,6 +297,8 @@ def audit(
 
         if fmt == "model-card":
             fmt_ext = "md"
+        elif fmt == "png":
+            fmt_ext = "zip"
         elif fmt == "repro-bundle":
             fmt_ext = "json"
         else:
@@ -308,7 +310,9 @@ def audit(
 
         # Normalize suffix to match format when provided
         if fmt and output_path is not None:
-            if output_path.suffix.lower() != f".{fmt_ext}":
+            if fmt == "png" and output_path.exists() and output_path.is_dir():
+                fmt_ext = None
+            if fmt_ext is not None and output_path.suffix.lower() != f".{fmt_ext}":
                 output_path = output_path.with_suffix(f".{fmt_ext}")
 
         # Infer format from suffix if not explicitly provided
@@ -335,6 +339,8 @@ def audit(
                 results.to_pptx(str(output_path), persona=persona_enum)
             elif fmt == "json":
                 results.to_json(str(output_path))
+            elif fmt == "png":
+                results.to_png(str(output_path), persona=persona_enum)
             elif fmt == "model-card":
                 results.to_model_card(str(output_path))
             elif fmt == "repro-bundle":

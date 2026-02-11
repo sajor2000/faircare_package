@@ -349,6 +349,8 @@ def render_export_section(result: Any) -> None:
         base_name = model_name.model_name if model_name is not None else "faircareai_report"
         if fmt == "model-card":
             suffix = "md"
+        elif fmt == "png":
+            suffix = "zip"
         elif fmt == "repro-bundle":
             suffix = "json"
         else:
@@ -374,6 +376,9 @@ def render_export_section(result: Any) -> None:
                 return out_path.read_bytes(), filename
             if fmt == "repro-bundle":
                 result.to_reproducibility_bundle(str(out_path))
+                return out_path.read_bytes(), filename
+            if fmt == "png":
+                result.to_png(str(out_path), persona=OutputPersona.GOVERNANCE)
                 return out_path.read_bytes(), filename
         raise RuntimeError("Failed to generate report")
 
@@ -457,6 +462,19 @@ def render_export_section(result: Any) -> None:
                 )
             except Exception as e:
                 st.error(f"Model card export failed: {e}")
+
+        if st.button("Download PNG Bundle", use_container_width=True):
+            try:
+                png_bytes, filename = _build_report_bytes("png")
+                st.download_button(
+                    label="Download PNG Bundle",
+                    data=png_bytes,
+                    file_name=filename,
+                    mime="application/zip",
+                    use_container_width=True,
+                )
+            except Exception as e:
+                st.error(f"PNG export failed: {e}")
 
         if st.button("Download Reproducibility Bundle", use_container_width=True):
             try:

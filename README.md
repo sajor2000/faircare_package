@@ -43,7 +43,7 @@ FairCareAI is a Python package for auditing machine learning models for fairness
 - **Plain Language Explanations**: Every visualization includes clear explanations of axes, metrics, and clinical significance
 - **Publication-Ready Typography**: Minimum 14px fonts
 - **Accessibility-First Design**: WCAG 2.1 AA compliant, colorblind-safe palettes
-- **Multiple Export Formats**: HTML dashboards, PDF reports, PowerPoint decks
+- **Multiple Export Formats**: HTML dashboards, PDF reports, PNG figure bundles, PowerPoint decks
 - **Model Card + Reproducibility Bundle**: Governance-ready summary and environment capture
 - **HIPAA-Friendly**: All computation runs locally, no cloud dependencies
 - **TRIPOD+AI Compliant**: Scientifically validated performance metrics
@@ -74,6 +74,8 @@ python -m playwright install chromium  # Required for PDF generation
 ```
 
 **Note**: PDF generation uses Playwright for cross-platform compatibility. See [docs/PDF_SETUP_GUIDE.md](docs/PDF_SETUP_GUIDE.md) for details.
+
+PNG export uses Kaleido for static Plotly rendering (included in `faircareai[export]`).
 
 ### Development Installation
 
@@ -396,6 +398,9 @@ results.to_reproducibility_bundle("reproducibility.json")
 
 # CLI reproducibility bundle
 # faircareai audit data.csv -p risk -t outcome --format repro-bundle -o repro.json
+
+# PNG bundle of figures
+results.to_png("figures.zip", persona="governance")
 ```
 
 ---
@@ -891,7 +896,7 @@ faircareai audit predictions.parquet -p risk_score -t outcome --threshold 0.3
 | `-t`, `--target-col` | Target/outcome column name | `-t readmit_30d` |
 | `-a`, `--attributes` | Sensitive attribute (repeatable) | `-a race -a sex` |
 | `-o`, `--output` | Output file path | `-o report.html` |
-| `--format` | Output format (html, pdf, pptx, json, model-card, repro-bundle) | `--format pdf` |
+| `--format` | Output format (html, pdf, pptx, json, png, model-card, repro-bundle) | `--format pdf` |
 | `--persona` | Output persona (data_scientist, governance) | `--persona governance` |
 | `--seed` | Random seed for bootstrap | `--seed 42` |
 | `--threshold` | Decision threshold (0-1) | `--threshold 0.3` |

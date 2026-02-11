@@ -84,6 +84,7 @@ dependencies = [
 export = [
 	"playwright>=1.40.0,<2.0.0",  # PDF rendering via browser automation
 	"python-pptx>=0.6.21,<1.0.0",  # PowerPoint report export
+	"kaleido>=0.2.1,<1.0.0",  # Static Plotly image export (PNG)
 ]
 
 dev = [

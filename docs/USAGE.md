@@ -124,6 +124,9 @@ results.to_pptx("presentation.pptx")
 # Model card + reproducibility bundle
 results.to_model_card("model_card.md")
 results.to_reproducibility_bundle("reproducibility.json")
+
+# PNG bundle of figures
+results.to_png("figures.zip", persona="governance")
 ```
 
 ### Comparison
@@ -623,6 +626,16 @@ to_model_card(path: str | Path) -> Path
 
 Export a governance-focused model card (Markdown).
 
+##### to_png()
+
+```python
+to_png(path: str | Path, persona: str = "governance", include_optional: bool = False) -> Path
+```
+
+Export PNG figures to a directory or a `.zip` bundle.
+
+Requires `kaleido` (included in `faircareai[export]`).
+
 #### Other Methods
 
 ##### summary()
@@ -768,7 +781,7 @@ faircareai audit DATA_PATH [OPTIONS]
 | `-t`, `--target-col` | Target/outcome column name (required) | `-t readmit_30d` |
 | `-a`, `--attributes` | Sensitive attribute (repeatable) | `-a race -a sex` |
 | `-o`, `--output` | Output file path | `-o report.html` |
-| `--format` | Output format (html, pdf, pptx, json, model-card, repro-bundle) | `--format pdf` |
+| `--format` | Output format (html, pdf, pptx, json, png, model-card, repro-bundle) | `--format pdf` |
 | `--persona` | Output persona (data_scientist, governance) | `--persona governance` |
 | `--seed` | Random seed for bootstrap | `--seed 42` |
 | `--threshold` | Decision threshold (0-1) | `--threshold 0.3` |
@@ -788,6 +801,9 @@ faircareai audit data.csv -p risk_score -t outcome --persona governance --format
 
 # Export reproducibility bundle
 faircareai audit data.csv -p risk_score -t outcome --format repro-bundle -o reproducibility.json
+
+# Export PNG figure bundle
+faircareai audit data.csv -p risk_score -t outcome --format png -o figures.zip
 
 # Full example with all options
 faircareai audit predictions.parquet \

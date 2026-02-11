@@ -445,6 +445,7 @@ class AuditResults:
         self,
         path: str | Path,
         persona: OutputPersona | str = OutputPersona.DATA_SCIENTIST,  # noqa: ARG002
+        include_charts: bool = True,
     ) -> Path:
         """Export PowerPoint deck for governance review.
 
@@ -458,6 +459,7 @@ class AuditResults:
         Args:
             path: Output file path.
             persona: Output persona (currently unused - PPTX is governance-focused).
+            include_charts: If True, embed key charts in the deck when possible.
 
         Returns:
             Path to generated presentation.
@@ -470,7 +472,7 @@ class AuditResults:
         path = Path(path)
         # PPTX is already governance-focused, use same generator for all personas
         summary = self._to_audit_summary()
-        return generate_pptx_report(summary, path)
+        return generate_pptx_report(summary, path, results=self, include_charts=include_charts)
 
     # === Convenience Methods for Governance Persona ===
 
@@ -595,6 +597,25 @@ class AuditResults:
         from faircareai.reports.model_card import generate_model_card_markdown
 
         return generate_model_card_markdown(self, path)
+
+    def to_png(
+        self,
+        path: str | Path,
+        persona: OutputPersona | str = OutputPersona.GOVERNANCE,
+        include_optional: bool = False,
+        scale: int = 2,
+    ) -> Path:
+        """Export figures as PNGs (directory or .zip bundle)."""
+        from faircareai.reports.figure_exports import export_png_bundle
+
+        persona = _normalize_persona(persona)
+        return export_png_bundle(
+            self,
+            path,
+            persona=persona,
+            include_optional=include_optional,
+            scale=scale,
+        )
 
     def _to_audit_summary(self) -> "AuditSummary":
         """Convert to legacy AuditSummary for report generator compatibility."""

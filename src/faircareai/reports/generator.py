@@ -454,6 +454,8 @@ def generate_pdf_report(
 def generate_pptx_deck(
     summary: AuditSummary,
     output_path: str | Path,
+    results: "AuditResults | None" = None,
+    include_charts: bool = True,
 ) -> Path:
     """
     Generate a PowerPoint governance deck.
@@ -493,6 +495,18 @@ def generate_pptx_deck(
 
     # Slide 4: Recommendations
     _add_recommendations_slide(prs, summary)
+
+    # Optional: Add chart slides if full results are available
+    if include_charts and results is not None:
+        try:
+            _add_chart_slides(prs, results)
+        except ImportError:
+            logger.warning(
+                "PNG/PPTX chart export requires kaleido. Install with: "
+                "pip install 'faircareai[export]'"
+            )
+        except Exception as exc:
+            logger.warning("Failed to add chart slides: %s", exc)
 
     # Save presentation
     prs.save(str(output_path.resolve()))
@@ -2115,6 +2129,83 @@ def _add_recommendations_slide(prs: Any, summary: AuditSummary) -> None:
         p.text = line
         p.font.size = Pt(TYPOGRAPHY["ppt_label_size"])  # 20pt - readable
         p.space_after = Pt(8)
+
+
+def _add_chart_slides(prs: Any, results: "AuditResults") -> None:
+    """Add chart slides using governance figures."""
+    from io import BytesIO
+    from pptx.util import Inches, Pt
+
+    from faircareai.reports.figure_exports import render_png_bytes
+    from faircareai.visualization.governance_dashboard import (
+        create_governance_overall_figures,
+        create_governance_subgroup_figures,
+    )
+
+    def _add_title(slide: Any, title: str) -> None:
+        title_box = slide.shapes.add_textbox(Inches(0.5), Inches(0.3), Inches(12), Inches(0.6))
+        tf = title_box.text_frame
+        p = tf.paragraphs[0]
+        p.text = title
+        p.font.size = Pt(TYPOGRAPHY["headline_size"])
+        p.font.bold = True
+
+    def _add_single_image_slide(title: str, fig: Any) -> None:
+        slide_layout = prs.slide_layouts[6]
+        slide = prs.slides.add_slide(slide_layout)
+        _add_title(slide, title)
+        png = render_png_bytes(fig, scale=2)
+        image_stream = BytesIO(png)
+        slide.shapes.add_picture(
+            image_stream,
+            Inches(0.5),
+            Inches(1.1),
+            width=Inches(12.3),
+            height=Inches(5.9),
+        )
+
+    def _add_grid_slide(title: str, figs: list[Any]) -> None:
+        slide_layout = prs.slide_layouts[6]
+        slide = prs.slides.add_slide(slide_layout)
+        _add_title(slide, title)
+
+        left = Inches(0.5)
+        top = Inches(1.1)
+        gutter = Inches(0.3)
+        cell_w = Inches(6.0)
+        cell_h = Inches(2.85)
+
+        positions = [
+            (left, top),
+            (left + cell_w + gutter, top),
+            (left, top + cell_h + gutter),
+            (left + cell_w + gutter, top + cell_h + gutter),
+        ]
+
+        for fig, (x, y) in zip(figs, positions, strict=False):
+            png = render_png_bytes(fig, scale=2)
+            image_stream = BytesIO(png)
+            slide.shapes.add_picture(image_stream, x, y, width=cell_w, height=cell_h)
+
+    # Executive summary figure
+    _add_single_image_slide("Executive Summary", results.plot_executive_summary())
+
+    # Overall performance (4 charts)
+    overall = create_governance_overall_figures(results)
+    overall_figs = [fig for key, fig in overall.items() if key != "_explanations"]
+    if len(overall_figs) >= 4:
+        _add_grid_slide("Overall Performance", overall_figs[:4])
+    elif overall_figs:
+        _add_single_image_slide("Overall Performance", overall_figs[0])
+
+    # Subgroup fairness slides (4 charts per attribute)
+    subgroup_figs = create_governance_subgroup_figures(results)
+    for attr, fig_map in subgroup_figs.items():
+        figs = list(fig_map.values())
+        if len(figs) >= 4:
+            _add_grid_slide(f"Fairness by {attr}", figs[:4])
+        elif figs:
+            _add_single_image_slide(f"Fairness by {attr}", figs[0])
 
 
 # === Alias for PPTX generation ===
