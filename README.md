@@ -1,5 +1,7 @@
 # FairCareAI
 
+[![CI](https://github.com/sajor2000/faircare_package/actions/workflows/ci.yml/badge.svg)](https://github.com/sajor2000/faircare_package/actions/workflows/ci.yml)
+[![PyPI](https://img.shields.io/pypi/v/faircareai.svg)](https://pypi.org/project/faircareai/)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![WCAG 2.1 AA](https://img.shields.io/badge/WCAG-2.1%20AA-green.svg)](https://www.w3.org/WAI/WCAG21/quickref/)
