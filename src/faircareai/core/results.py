@@ -22,6 +22,7 @@ if TYPE_CHECKING:
     import plotly.graph_objects as go
 
     from faircareai.reports.generator import AuditSummary
+    from faircareai.reports.pptx_options import PptxOptions
 
 from faircareai.core.config import FairnessConfig, MetricDisplayConfig, OutputPersona
 from faircareai.core.logging import get_logger
@@ -446,6 +447,7 @@ class AuditResults:
         path: str | Path,
         persona: OutputPersona | str = OutputPersona.DATA_SCIENTIST,  # noqa: ARG002
         include_charts: bool = True,
+        pptx_options: "PptxOptions | None" = None,
     ) -> Path:
         """Export PowerPoint deck for governance review.
 
@@ -460,6 +462,7 @@ class AuditResults:
             path: Output file path.
             persona: Output persona (currently unused - PPTX is governance-focused).
             include_charts: If True, embed key charts in the deck when possible.
+            pptx_options: Optional PptxOptions to customize slide order and content.
 
         Returns:
             Path to generated presentation.
@@ -472,7 +475,13 @@ class AuditResults:
         path = Path(path)
         # PPTX is already governance-focused, use same generator for all personas
         summary = self._to_audit_summary()
-        return generate_pptx_report(summary, path, results=self, include_charts=include_charts)
+        return generate_pptx_report(
+            summary,
+            path,
+            results=self,
+            include_charts=include_charts,
+            pptx_options=pptx_options,
+        )
 
     # === Convenience Methods for Governance Persona ===
 

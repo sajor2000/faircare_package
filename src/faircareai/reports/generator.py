@@ -41,6 +41,7 @@ from faircareai.visualization.themes import (
 if TYPE_CHECKING:
     from faircareai.core.config import MetricDisplayConfig
     from faircareai.core.results import AuditResults
+    from faircareai.reports.pptx_options import PptxOptions
 
 
 logger = get_logger(__name__)
@@ -456,6 +457,7 @@ def generate_pptx_deck(
     output_path: str | Path,
     results: "AuditResults | None" = None,
     include_charts: bool = True,
+    pptx_options: "PptxOptions | None" = None,
 ) -> Path:
     """
     Generate a PowerPoint governance deck.
@@ -484,34 +486,90 @@ def generate_pptx_deck(
     prs.slide_width = Inches(13.333)  # 16:9 aspect ratio
     prs.slide_height = Inches(7.5)
 
-    # Slide 1: Title
-    _add_title_slide(prs, summary)
+    from faircareai.reports.pptx_options import PptxOptions
 
-    # Slide 2: Executive Summary
-    _add_summary_slide(prs, summary)
+    options = pptx_options or PptxOptions()
 
-    # Slide 3: Key Findings
-    _add_findings_slide(prs, summary)
+    if not include_charts:
+        options.include_exec_summary_chart = False
+        options.include_scorecard_chart = False
+        options.include_overall_charts = False
+        options.include_subgroup_charts = False
+        options.include_vancalster_dashboard = False
 
-    # Slide 4: Recommendations
-    _add_recommendations_slide(prs, summary)
+    slide_builders: dict[str, callable] = {
+        "title": lambda: _add_title_slide(prs, summary, logo_path=options.logo_path),
+        "summary": lambda: _add_summary_slide(prs, summary),
+        "key_findings": lambda: _add_findings_slide(prs, summary),
+        "methodology": lambda: _add_recommendations_slide(prs, summary),
+        "exec_summary_chart": lambda: _add_exec_summary_chart_slide(prs, results),
+        "scorecard_chart": lambda: _add_scorecard_chart_slide(prs, results),
+        "overall_charts": lambda: _add_overall_charts_slide(prs, results),
+        "subgroup_charts": lambda: _add_subgroup_charts_slides(prs, results),
+        "vancalster_dashboard": lambda: _add_vancalster_slide(prs, results),
+    }
 
-    # Optional: Add chart slides if full results are available
-    if include_charts and results is not None:
+    default_order = [
+        "title",
+        "summary",
+        "key_findings",
+        "methodology",
+        "exec_summary_chart",
+        "scorecard_chart",
+        "overall_charts",
+        "subgroup_charts",
+        "vancalster_dashboard",
+    ]
+
+    order = options.slide_order or default_order
+
+    for key in order:
+        if key == "title" and not options.include_title_slide:
+            continue
+        if key == "summary" and not options.include_exec_summary:
+            continue
+        if key == "key_findings" and not options.include_key_findings:
+            continue
+        if key == "methodology" and not options.include_methodology:
+            continue
+        if key == "exec_summary_chart" and not options.include_exec_summary_chart:
+            continue
+        if key == "scorecard_chart" and not options.include_scorecard_chart:
+            continue
+        if key == "overall_charts" and not options.include_overall_charts:
+            continue
+        if key == "subgroup_charts" and not options.include_subgroup_charts:
+            continue
+        if key == "vancalster_dashboard" and not options.include_vancalster_dashboard:
+            continue
+        if results is None and key in {
+            "exec_summary_chart",
+            "scorecard_chart",
+            "overall_charts",
+            "subgroup_charts",
+            "vancalster_dashboard",
+        }:
+            continue
+        builder = slide_builders.get(key)
+        if builder is None:
+            continue
         try:
-            _add_chart_slides(prs, results)
+            builder()
         except ImportError:
             logger.warning(
                 "PNG/PPTX chart export requires kaleido. Install with: "
                 "pip install 'faircareai[export]'"
             )
         except Exception as exc:
-            logger.warning("Failed to add chart slides: %s", exc)
+            logger.warning("Failed to add slide '%s': %s", key, exc)
 
     # Add footer to all slides
-    footer_text = f"{summary.model_name} | Audit Date: {summary.audit_date}"
-    if results is not None and getattr(results, "audit_id", None):
-        footer_text = f"Audit ID: {results.audit_id} | {summary.audit_date}"
+    if options.footer_text:
+        footer_text = options.footer_text
+    else:
+        footer_text = f"{summary.model_name} | Audit Date: {summary.audit_date}"
+        if results is not None and getattr(results, "audit_id", None):
+            footer_text = f"Audit ID: {results.audit_id} | {summary.audit_date}"
 
     for slide in prs.slides:
         _add_footer(slide, footer_text)
@@ -1978,7 +2036,7 @@ def _get_print_css() -> str:
     """
 
 
-def _add_title_slide(prs: Any, summary: AuditSummary) -> None:
+def _add_title_slide(prs: Any, summary: AuditSummary, logo_path: str | Path | None = None) -> None:
     """Add title slide to presentation with publication-ready typography."""
     from pptx.util import Inches, Pt
 
@@ -2006,6 +2064,22 @@ def _add_title_slide(prs: Any, summary: AuditSummary) -> None:
     p = tf.paragraphs[0]
     p.text = f"Audit Date: {summary.audit_date}"
     p.font.size = Pt(TYPOGRAPHY["ppt_body_size"])  # 24pt
+
+    if logo_path:
+        try:
+            _add_logo(slide, logo_path)
+        except Exception:
+            pass
+
+
+def _add_logo(slide: Any, logo_path: str | Path) -> None:
+    """Add a logo image to the top-right corner."""
+    from pptx.util import Inches
+
+    logo = Path(logo_path)
+    if not logo.exists():
+        return
+    slide.shapes.add_picture(str(logo), Inches(10.8), Inches(0.3), width=Inches(2.0))
 
 
 def _add_footer(slide: Any, footer_text: str) -> None:
@@ -2152,7 +2226,127 @@ def _add_recommendations_slide(prs: Any, summary: AuditSummary) -> None:
         p.space_after = Pt(8)
 
 
-def _add_chart_slides(prs: Any, results: "AuditResults") -> None:
+def _add_exec_summary_chart_slide(prs: Any, results: "AuditResults") -> None:
+    """Add executive summary figure slide."""
+    _add_single_image_slide(prs, "Executive Summary", results.plot_executive_summary())
+
+
+def _add_scorecard_chart_slide(prs: Any, results: "AuditResults") -> None:
+    """Add go/no-go scorecard slide."""
+    _add_single_image_slide(prs, "Go/No-Go Scorecard", results.plot_go_nogo_scorecard())
+
+
+def _add_overall_charts_slide(prs: Any, results: "AuditResults") -> None:
+    """Add 2x2 overall performance charts slide."""
+    from faircareai.visualization.governance_dashboard import create_governance_overall_figures
+
+    overall = create_governance_overall_figures(results)
+    overall_figs = [fig for key, fig in overall.items() if key != "_explanations"]
+    if len(overall_figs) >= 4:
+        _add_grid_slide(prs, "Overall Performance", overall_figs[:4])
+    elif overall_figs:
+        _add_single_image_slide(prs, "Overall Performance", overall_figs[0])
+
+
+def _add_subgroup_charts_slides(prs: Any, results: "AuditResults") -> None:
+    """Add subgroup fairness slides (one per attribute)."""
+    from faircareai.visualization.governance_dashboard import create_governance_subgroup_figures
+
+    subgroup_figs = create_governance_subgroup_figures(results)
+    for attr, fig_map in subgroup_figs.items():
+        figs = list(fig_map.values())
+        if len(figs) >= 4:
+            _add_grid_slide(prs, f"Fairness by {attr}", figs[:4])
+        elif figs:
+            _add_single_image_slide(prs, f"Fairness by {attr}", figs[0])
+
+
+def _add_vancalster_slide(prs: Any, results: "AuditResults") -> None:
+    """Add Van Calster dashboard slide if possible."""
+    if getattr(results, "_audit", None) is None:
+        return
+    audit = results._audit
+    if not getattr(audit, "sensitive_attributes", None):
+        return
+    try:
+        from faircareai.metrics.vancalster import compute_vancalster_metrics
+        from faircareai.visualization.vancalster_plots import create_vancalster_dashboard
+
+        vancalster = compute_vancalster_metrics(
+            df=audit.df,
+            y_prob_col=audit.pred_col,
+            y_true_col=audit.target_col,
+            group_col=audit.sensitive_attributes[0].column,
+        )
+        fig = create_vancalster_dashboard(vancalster)
+        _add_single_image_slide(prs, "Van Calster Dashboard", fig)
+    except Exception:
+        return
+
+
+def _add_single_image_slide(prs: Any, title: str, fig: Any) -> None:
+    """Add a single chart slide."""
+    from io import BytesIO
+    from pptx.util import Inches
+
+    from faircareai.reports.figure_exports import render_png_bytes
+
+    slide_layout = prs.slide_layouts[6]
+    slide = prs.slides.add_slide(slide_layout)
+    _add_title(slide, title)
+    width_in = 12.3
+    height_in = 5.9
+    png = render_png_bytes(
+        fig,
+        scale=2,
+        width=int(width_in * 150),
+        height=int(height_in * 150),
+    )
+    image_stream = BytesIO(png)
+    slide.shapes.add_picture(
+        image_stream,
+        Inches(0.5),
+        Inches(1.1),
+        width=Inches(width_in),
+        height=Inches(height_in),
+    )
+
+
+def _add_grid_slide(prs: Any, title: str, figs: list[Any]) -> None:
+    """Add a 2x2 grid of charts."""
+    from io import BytesIO
+    from pptx.util import Inches
+
+    from faircareai.reports.figure_exports import render_png_bytes
+
+    slide_layout = prs.slide_layouts[6]
+    slide = prs.slides.add_slide(slide_layout)
+    _add_title(slide, title)
+
+    left = Inches(0.5)
+    top = Inches(1.1)
+    gutter = Inches(0.3)
+    cell_w_in = 6.0
+    cell_h_in = 2.85
+    cell_w = Inches(cell_w_in)
+    cell_h = Inches(cell_h_in)
+
+    positions = [
+        (left, top),
+        (left + cell_w + gutter, top),
+        (left, top + cell_h + gutter),
+        (left + cell_w + gutter, top + cell_h + gutter),
+    ]
+
+    for fig, (x, y) in zip(figs, positions, strict=False):
+        png = render_png_bytes(
+            fig,
+            scale=2,
+            width=int(cell_w_in * 150),
+            height=int(cell_h_in * 150),
+        )
+        image_stream = BytesIO(png)
+        slide.shapes.add_picture(image_stream, x, y, width=cell_w, height=cell_h)
     """Add chart slides using governance figures."""
     from io import BytesIO
     from pptx.util import Inches, Pt

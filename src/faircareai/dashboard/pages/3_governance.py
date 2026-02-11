@@ -478,10 +478,9 @@ def render_export_section(result: Any) -> None:
 
         if st.button("Download Data Scientist PNG Bundle", use_container_width=True):
             try:
-                png_bytes, filename = _build_report_bytes("png")
                 # Regenerate with data scientist persona + optional metrics
                 with tempfile.TemporaryDirectory() as tmpdir:
-                    out_path = Path(tmpdir) / filename
+                    out_path = Path(tmpdir) / "faircareai_figures_data_scientist.zip"
                     result.to_png(
                         str(out_path),
                         persona="data_scientist",
@@ -491,7 +490,7 @@ def render_export_section(result: Any) -> None:
                 st.download_button(
                     label="Download Data Scientist PNGs",
                     data=png_bytes,
-                    file_name=filename.replace(".zip", "_data_scientist.zip"),
+                    file_name="faircareai_figures_data_scientist.zip",
                     mime="application/zip",
                     use_container_width=True,
                 )
