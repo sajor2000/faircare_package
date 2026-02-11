@@ -16,7 +16,7 @@ Comprehensive review of all FairCareAI documentation confirms accuracy with the 
 
 ## Files Reviewed
 
-### 1. FIGURE_LEGEND_REFERENCE.md ✅ ACCURATE
+### 1. docs/references/FIGURE_LEGEND_REFERENCE.md ✅ ACCURATE
 
 **Status:** No changes required
 **Verification:**
@@ -171,10 +171,10 @@ for evaluating predictive AI models, computed both overall and by subgroup:
 
 | Figure | Code Implementation | Documentation | Status |
 |--------|---------------------|---------------|--------|
-| AUROC Gauge | Lines 978-1029 | FIGURE_LEGEND_REFERENCE.md lines 27-47 | ✅ Match |
-| Calibration Plot | Lines 1031-1112 | FIGURE_LEGEND_REFERENCE.md lines 49-68 | ✅ Match |
-| Brier Score Gauge | Lines 1114-1166 | FIGURE_LEGEND_REFERENCE.md lines 70-88 | ✅ Match |
-| Classification Metrics | Lines 1168-1222 | FIGURE_LEGEND_REFERENCE.md lines 90-111 | ✅ Match |
+| AUROC Gauge | Lines 978-1029 | docs/references/FIGURE_LEGEND_REFERENCE.md lines 27-47 | ✅ Match |
+| Calibration Plot | Lines 1031-1112 | docs/references/FIGURE_LEGEND_REFERENCE.md lines 49-68 | ✅ Match |
+| Brier Score Gauge | Lines 1114-1166 | docs/references/FIGURE_LEGEND_REFERENCE.md lines 70-88 | ✅ Match |
+| Classification Metrics | Lines 1168-1222 | docs/references/FIGURE_LEGEND_REFERENCE.md lines 90-111 | ✅ Match |
 
 #### Subgroup Fairness Figures (4 per attribute)
 
@@ -182,10 +182,10 @@ for evaluating predictive AI models, computed both overall and by subgroup:
 
 | Figure | Code Implementation | Documentation | Status |
 |--------|---------------------|---------------|--------|
-| AUROC by Subgroup | Lines 1317-1326 | FIGURE_LEGEND_REFERENCE.md lines 115-134 | ✅ Match |
-| Sensitivity (TPR) | Lines 1328-1337 | FIGURE_LEGEND_REFERENCE.md lines 136-155 | ✅ Match |
-| FPR by Subgroup | Lines 1339-1348 | FIGURE_LEGEND_REFERENCE.md lines 157-176 | ✅ Match |
-| Selection Rate | Lines 1350-1359 | FIGURE_LEGEND_REFERENCE.md lines 178-197 | ✅ Match |
+| AUROC by Subgroup | Lines 1317-1326 | docs/references/FIGURE_LEGEND_REFERENCE.md lines 115-134 | ✅ Match |
+| Sensitivity (TPR) | Lines 1328-1337 | docs/references/FIGURE_LEGEND_REFERENCE.md lines 136-155 | ✅ Match |
+| FPR by Subgroup | Lines 1339-1348 | docs/references/FIGURE_LEGEND_REFERENCE.md lines 157-176 | ✅ Match |
+| Selection Rate | Lines 1350-1359 | docs/references/FIGURE_LEGEND_REFERENCE.md lines 178-197 | ✅ Match |
 
 ### Plain Language Explanations
 
@@ -224,7 +224,7 @@ PLAIN_EXPLANATIONS = {
 }
 ```
 
-**FIGURE_LEGEND_REFERENCE.md Alignment:** ✅ EXACT MATCH (lines 31-96)
+**docs/references/FIGURE_LEGEND_REFERENCE.md Alignment:** ✅ EXACT MATCH (lines 31-96)
 
 #### Subgroup Explanations
 
@@ -258,7 +258,7 @@ SUBGROUP_EXPLANATIONS = {
 }
 ```
 
-**FIGURE_LEGEND_REFERENCE.md Alignment:** ✅ EXACT MATCH (lines 119-184)
+**docs/references/FIGURE_LEGEND_REFERENCE.md Alignment:** ✅ EXACT MATCH (lines 119-184)
 
 ### Typography Standards
 
@@ -402,7 +402,7 @@ results.to_pptx('deck.pptx')  # PowerPoint
 
 ## Files Verified (No Changes Needed)
 
-1. `/Users/JCR/Downloads/faircareai/FIGURE_LEGEND_REFERENCE.md` - ✅ Accurate
+1. `docs/references/FIGURE_LEGEND_REFERENCE.md` - ✅ Accurate
 2. `/Users/JCR/Downloads/faircareai/docs/USAGE.md` - ✅ Accurate
 3. `/Users/JCR/Downloads/faircareai/CHANGELOG.md` - ✅ Accurate
 4. `/Users/JCR/Downloads/faircareai/CONTRIBUTING.md` - ✅ Accurate

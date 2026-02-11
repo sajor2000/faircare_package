@@ -126,7 +126,7 @@ def _render_governance_overall_figures(results: "AuditResults") -> str:
    - `test_pdf_output.py`: PDF validation with Playwright
 
 3. **Documentation Created**
-   - `PDF_SETUP_GUIDE.md`: Cross-platform setup guide
+   - `docs/PDF_SETUP_GUIDE.md`: Cross-platform setup guide
 
 ---
 
@@ -145,7 +145,7 @@ def _render_governance_overall_figures(results: "AuditResults") -> str:
   - Governance PDF: 462.0 KB (with interactive charts rendered)
   - Data Scientist PDF: 214.3 KB (with Altair charts)
 - **Chart Format**: Full interactive charts rendered by Playwright
-- **Setup Required**: 2 universal commands (see [PDF_SETUP_GUIDE.md](PDF_SETUP_GUIDE.md))
+- **Setup Required**: 2 universal commands (see [docs/PDF_SETUP_GUIDE.md](../PDF_SETUP_GUIDE.md))
 
 ---
 
@@ -215,7 +215,7 @@ python -m playwright install chromium
 - [x] Create test scripts
 - [x] Verify no regression in HTML output
 - [x] Test PDF generation with Playwright
-- [x] Update user documentation (PDF_SETUP_GUIDE.md)
+- [x] Update user documentation (docs/PDF_SETUP_GUIDE.md)
 - [x] Delete obsolete documentation (WEASYPRINT_MACOS_SETUP.md)
 - [ ] Add to release notes
 - [ ] Update package README with new setup instructions
@@ -250,7 +250,7 @@ start test_governance_report_with_charts.pdf  # Windows
 xdg-open test_governance_report_with_charts.pdf  # Linux
 ```
 
-See [PDF_SETUP_GUIDE.md](PDF_SETUP_GUIDE.md) for detailed setup instructions.
+See [docs/PDF_SETUP_GUIDE.md](../PDF_SETUP_GUIDE.md) for detailed setup instructions.
 
 ---
 

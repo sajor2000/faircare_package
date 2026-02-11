@@ -342,7 +342,7 @@ Then create a Pull Request on GitHub with:
 5. **Include plain language explanation for governance persona**
 6. Add to `AuditResults` if needed
 7. Write tests
-8. Update `FIGURE_LEGEND_REFERENCE.md`
+8. Update `docs/references/FIGURE_LEGEND_REFERENCE.md`
 
 ### Plain Language Standards
 

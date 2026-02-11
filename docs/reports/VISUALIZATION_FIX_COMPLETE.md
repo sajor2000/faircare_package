@@ -110,7 +110,7 @@ open test_report_interactive.html
    - Removed ~100 lines of static SVG conversion code
 
 ### New Documentation
-1. **PDF_SETUP_GUIDE.md** - Complete cross-platform setup guide
+1. **docs/PDF_SETUP_GUIDE.md** - Complete cross-platform setup guide
 2. **test_pdf_output.py** - Permanent test script
 
 ---
@@ -170,7 +170,7 @@ results.to_pdf("technical.pdf")             # Data scientist PDF
 - ✅ No regression in existing functionality
 
 ### Documentation
-- ✅ Cross-platform setup guide (PDF_SETUP_GUIDE.md)
+- ✅ Cross-platform setup guide (docs/PDF_SETUP_GUIDE.md)
 - ✅ Troubleshooting instructions
 - ✅ Platform-agnostic setup process
 - ✅ Code examples
@@ -225,7 +225,7 @@ def _render_governance_subgroup_figures(
 ## 📚 Documentation Files
 
 ### Setup Guides
-- **PDF_SETUP_GUIDE.md**: Simple 2-step cross-platform setup
+- **docs/PDF_SETUP_GUIDE.md**: Simple 2-step cross-platform setup
 
 ### Test Scripts
 - **test_html_charts_fix.py**: Verify HTML charts
@@ -269,7 +269,7 @@ def _render_governance_subgroup_figures(
 ## 📞 Support
 
 ### If Charts Don't Appear in PDF
-1. Check [PDF_SETUP_GUIDE.md](PDF_SETUP_GUIDE.md)
+1. Check [docs/PDF_SETUP_GUIDE.md](../PDF_SETUP_GUIDE.md)
 2. Verify Playwright installed: `pip show playwright`
 3. Verify Chromium installed: `python -m playwright install chromium`
 4. Run test: `python3 test_pdf_output.py`

@@ -70,7 +70,7 @@ pip install "faircareai[export]"
 python -m playwright install chromium  # Required for PDF generation
 ```
 
-**Note**: PDF generation uses Playwright for cross-platform compatibility. See [PDF_SETUP_GUIDE.md](PDF_SETUP_GUIDE.md) for details.
+**Note**: PDF generation uses Playwright for cross-platform compatibility. See [docs/PDF_SETUP_GUIDE.md](docs/PDF_SETUP_GUIDE.md) for details.
 
 ### Development Installation
 
@@ -1074,11 +1074,16 @@ If you use FairCareAI in your research or clinical implementation, please cite:
 ## Support
 
 - **Documentation**: See [docs/](docs/) folder for detailed guides
+  - [USAGE.md](docs/USAGE.md) - Quickstart and end-to-end usage
   - [METHODOLOGY.md](docs/METHODOLOGY.md) - Scientific foundation and fairness theory
+  - [PDF_SETUP_GUIDE.md](docs/PDF_SETUP_GUIDE.md) - PDF export setup
   - [ARCHITECTURE.md](ARCHITECTURE.md) - System design and data flow
   - [CONTRIBUTING.md](CONTRIBUTING.md) - Development guidelines
+  - [Reports & audits](docs/reports/) - Internal reviews and verification artifacts
 - **Issues**: [GitHub Issues](https://github.com/sajor2000/faircare_package/issues)
 - **Discussions**: [GitHub Discussions](https://github.com/sajor2000/faircare_package/discussions)
+- **Code of Conduct**: See [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)
+- **Security**: See [SECURITY.md](SECURITY.md)
 
 ---
 

@@ -8,7 +8,7 @@ Tests all FairCareAI charts for:
 - Cross-format consistency
 
 Usage:
-    python test_playwright_charts.py
+    python scripts/test_playwright_charts.py
 
 Requirements:
     pip install playwright polars

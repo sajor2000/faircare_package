@@ -113,7 +113,7 @@ Updated **4 chart functions** with dynamic text color:
 
 ### 4. Testing Infrastructure
 
-**File:** [test_playwright_charts.py](test_playwright_charts.py) (new)
+**File:** [scripts/test_playwright_charts.py](../../scripts/test_playwright_charts.py) (new)
 
 Created comprehensive Playwright MCP test script:
 - Generates test data with 3 sensitive attributes
@@ -242,7 +242,7 @@ pip install playwright polars
 python -m playwright install chromium
 
 # Run test
-python3 test_playwright_charts.py
+python3 scripts/test_playwright_charts.py
 ```
 
 The script will:
@@ -283,7 +283,7 @@ The script will:
    - Fixed 2 duplicate `textfont` bugs
 
 ### Test Files (1)
-4. **test_playwright_charts.py** (new)
+4. **scripts/test_playwright_charts.py** (new)
    - Comprehensive Playwright MCP test script
    - Browser automation for UI/UX verification
    - Export format testing

@@ -1,0 +1,9 @@
+cff-version: 1.2.0
+message: "If you use FairCareAI in your research or clinical implementation, please cite it."
+title: "FairCareAI: Healthcare AI Fairness Auditing"
+version: 0.2.0
+license: "MIT"
+repository-code: "https://github.com/sajor2000/faircare_package"
+url: "https://github.com/sajor2000/faircare_package"
+authors:
+  - name: "FairCareAI Contributors"
