@@ -402,14 +402,14 @@ brier_scaled = 1 - (brier / brier_null) if brier_null > 0 else 0.0  # ✓
 **Formula:** BSS = 1 - (Brier / Brier_null), where Brier_null = p(1-p)
 **Status:** **CORRECT** per Van Calster et al. (2025) **✓**
 
-#### ✅ E/O Ratio (lines 268-271):
+#### ✅ O:E Ratio (lines 268-271):
 ```python
 expected = np.sum(y_prob)
 observed = np.sum(y_true)
-eo_ratio = expected / observed if observed > 0 else float("inf")  # ✓
+oe_ratio = observed / expected if expected > 0 else None  # ✓
 ```
 
-**Status:** **CORRECT** - Proper handling of observed=0 **✓**
+**Status:** **CORRECT** - Proper handling of expected=0 **✓**
 
 #### ✅ ICI (Integrated Calibration Index) (lines 275-277):
 ```python
@@ -540,7 +540,7 @@ if cluster_col is not None and cluster_col in stratum_df.columns:
 
 #### ✅ NaN/Inf Handling:
 - `np.isnan()` checks before CI decisions **✓**
-- Inf returned for E/O ratio when observed=0 (semantically correct) **✓**
+- O:E ratio returns 0 when observed=0 (expected>0), and None when expected=0 **✓**
 
 ---
 
@@ -685,4 +685,3 @@ As a senior biostatistician with 20+ years of experience in clinical prediction 
 **Files Reviewed:** 12 statistical modules (3,000+ lines)
 **Formulas Verified:** 25+ statistical methods
 **Test Cases Validated:** 15+ edge cases
-

@@ -20,14 +20,16 @@ Methodology: Van Calster et al. (2025), CHAI RAIC Checkpoint 1.
 
 import asyncio
 import html
+import re
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 import polars as pl
 
+from faircareai import __version__ as faircareai_version
 from faircareai.core.logging import get_logger
 from faircareai.visualization.exporters import FigureExportError
 from faircareai.visualization.themes import (
@@ -42,6 +44,184 @@ if TYPE_CHECKING:
 
 
 logger = get_logger(__name__)
+
+_PLOTLYJS_CDN_URL_FALLBACK = "https://cdn.plot.ly/plotly-2.27.0.min.js"
+_PLOTLY_CDN_SCRIPT_RE = re.compile(
+    r"<script[^>]+src=[\"']https://cdn\.plot\.ly/plotly-[^\"']+\.min\.js[\"'][^>]*></script>",
+    flags=re.IGNORECASE,
+)
+
+
+def _get_plotlyjs_cdn_url() -> str:
+    """Return a Plotly.js CDN URL matching the installed plotly.py version."""
+    try:
+        import plotly.io as pio
+
+        return f"https://cdn.plot.ly/plotly-{pio.plotlyjs_version}.min.js"
+    except Exception:
+        return _PLOTLYJS_CDN_URL_FALLBACK
+
+
+def _inject_plotlyjs(html_content: str, *, standalone: bool) -> str:
+    """Ensure Plotly.js is available before any embedded figure scripts run.
+
+    Plotly figure fragments are generated with `include_plotlyjs=False` to avoid
+    duplicating the library for every chart, so the report must provide Plotly.js
+    once at the document level.
+
+    Args:
+        html_content: Full HTML document content.
+        standalone: If True, inline Plotly.js for offline viewing. If False, link to CDN.
+    """
+    if "</head>" not in html_content:
+        return html_content
+
+    # Remove any existing Plotly CDN tags to avoid duplicates (or stale versions).
+    html_content = _PLOTLY_CDN_SCRIPT_RE.sub("", html_content)
+
+    cdn_url = _get_plotlyjs_cdn_url()
+    if standalone:
+        try:
+            from plotly.offline import get_plotlyjs
+
+            plotlyjs = get_plotlyjs()
+            script_tag = f'<script type="text/javascript">{plotlyjs}</script>'
+        except Exception as e:
+            logger.warning(
+                "Failed to inline Plotly.js (%s): %s. Falling back to CDN.",
+                type(e).__name__,
+                str(e),
+            )
+            script_tag = f'<script src="{cdn_url}"></script>'
+    else:
+        script_tag = f'<script src="{cdn_url}"></script>'
+
+    return html_content.replace("</head>", f"{script_tag}\n</head>", 1)
+
+
+def _count_subgroups(results: "AuditResults") -> int:
+    """Count demographic subgroups across all sensitive attributes."""
+    n_groups = 0
+    for _attr_name, metrics in results.subgroup_performance.items():
+        if isinstance(metrics, dict):
+            groups = metrics.get("groups", metrics)
+            n_groups += len(
+                [k for k in groups if k not in ("reference", "attribute", "threshold")]
+            )
+    return n_groups
+
+
+def _build_audit_trail_rows(
+    results: "AuditResults | None",
+    summary: "AuditSummary | None",
+    report_generated_at: str,
+) -> list[tuple[str, str]]:
+    """Build audit trail key-value rows for report rendering."""
+    audit_id = getattr(results, "audit_id", None) if results else None
+    run_timestamp = None
+    if results is not None:
+        run_timestamp = results.run_timestamp or results.config.report_date
+    elif summary is not None:
+        run_timestamp = summary.audit_date
+
+    run_timestamp = run_timestamp or date.today().isoformat()
+
+    model_name = (
+        results.config.model_name if results is not None else (summary.model_name if summary else "N/A")
+    )
+    model_version = results.config.model_version if results is not None else ""
+    model_label = f"{model_name} v{model_version}" if model_version else model_name
+
+    n_samples = None
+    if results is not None:
+        n_samples = results.descriptive_stats.get("cohort_overview", {}).get("n_total")
+    elif summary is not None:
+        n_samples = summary.n_samples
+
+    n_groups = None
+    if results is not None:
+        n_groups = _count_subgroups(results)
+    elif summary is not None:
+        n_groups = summary.n_groups
+
+    threshold = None
+    if results is not None:
+        threshold = results.threshold
+    elif summary is not None:
+        threshold = summary.threshold
+
+    attributes = "N/A"
+    if results is not None:
+        attr_names = sorted([k for k in results.fairness_metrics.keys() if isinstance(k, str)])
+        attributes = ", ".join(attr_names) if attr_names else "Not specified"
+
+    primary_metric = "Not specified"
+    if results is not None and results.config.primary_fairness_metric:
+        primary_metric = results.config.primary_fairness_metric.value
+
+    org_name = results.config.organization_name if results is not None else ""
+
+    def _fmt_num(value: Any) -> str:
+        if value is None:
+            return "N/A"
+        try:
+            return f"{value:,}"
+        except Exception:
+            return str(value)
+
+    def _fmt_threshold(value: Any) -> str:
+        if value is None:
+            return "N/A"
+        try:
+            return f"{value:.2f}"
+        except Exception:
+            return str(value)
+
+    rows = [
+        ("Audit ID", audit_id or "N/A"),
+        ("Audit run timestamp", run_timestamp),
+        ("Report generated", report_generated_at),
+        ("Model", model_label),
+    ]
+
+    if org_name:
+        rows.append(("Organization", org_name))
+
+    rows.extend(
+        [
+            ("Samples", _fmt_num(n_samples)),
+            ("Groups", _fmt_num(n_groups)),
+            ("Decision threshold", _fmt_threshold(threshold)),
+            ("Primary fairness metric", primary_metric),
+            ("Sensitive attributes", attributes),
+            ("FairCareAI version", faircareai_version),
+        ]
+    )
+
+    return rows
+
+
+def _render_audit_trail_html(
+    results: "AuditResults | None",
+    summary: "AuditSummary | None",
+    report_generated_at: str,
+    title: str = "Audit Trail",
+) -> str:
+    """Render audit trail section as HTML."""
+    rows = _build_audit_trail_rows(results, summary, report_generated_at)
+    row_html = "\n".join(
+        f"<tr><th>{html.escape(label)}</th><td>{html.escape(value)}</td></tr>" for label, value in rows
+    )
+    return f"""
+    <section class="section audit-trail">
+        <h2>{html.escape(title)}</h2>
+        <table class="audit-table">
+            <tbody>
+                {row_html}
+            </tbody>
+        </table>
+    </section>
+    """
 
 
 def _is_in_async_context() -> bool:
@@ -74,11 +254,46 @@ def _run_playwright_pdf_generation(
 
     def _generate_pdf() -> None:
         with sync_playwright() as p:
-            browser = p.chromium.launch()
+            launch_kwargs: dict[str, Any] = {"headless": True}
+            try:
+                browser = p.chromium.launch(**launch_kwargs)
+            except Exception as e:
+                logger.warning(
+                    "Playwright Chromium launch failed (%s): %s. Retrying with channel='chrome'.",
+                    type(e).__name__,
+                    str(e),
+                )
+                try:
+                    browser = p.chromium.launch(channel="chrome", **launch_kwargs)
+                except Exception as e2:
+                    raise ImportError(
+                        "Playwright is installed, but Chromium could not be launched in this environment. "
+                        "This is often caused by sandbox/permission restrictions or missing browser binaries. "
+                        "Try running outside restricted environments and/or reinstalling browsers with: "
+                        "`python -m playwright install chromium`."
+                    ) from e2
             page = browser.new_page()
 
             # Load HTML content with timeout protection (60s for complex reports)
             page.set_content(html_content, wait_until="networkidle", timeout=60000)
+
+            # Ensure Plotly has time to render before PDF capture (prevents blank charts)
+            try:
+                page.wait_for_function("() => typeof window.Plotly !== 'undefined'", timeout=60000)
+                page.wait_for_function(
+                    "() => {"
+                    "  const charts = Array.from(document.querySelectorAll('.plotly-graph-div'));"
+                    "  if (charts.length === 0) return true;"
+                    "  return charts.every(c => c.querySelector('svg,canvas'));"
+                    "}",
+                    timeout=60000,
+                )
+            except Exception as e:
+                logger.warning(
+                    "Timed out waiting for charts to render before PDF capture (%s): %s",
+                    type(e).__name__,
+                    str(e),
+                )
 
             # Generate PDF with print styling
             page.pdf(
@@ -196,6 +411,7 @@ def generate_pdf_report(
 
     # Generate HTML content
     html_content = _generate_report_html(summary, include_charts, results=results)
+    html_content = _inject_plotlyjs(html_content, standalone=True)
 
     # Use Playwright to render HTML to PDF (handles Jupyter/async context)
     _run_playwright_pdf_generation(html_content, output_path)
@@ -282,13 +498,7 @@ def generate_html_report(
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
     html_content = _generate_full_report_html(results)
-
-    if standalone:
-        # Embed Plotly.js for interactive charts
-        html_content = html_content.replace(
-            "</head>",
-            '<script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script></head>',
-        )
+    html_content = _inject_plotlyjs(html_content, standalone=standalone)
 
     with open(output_path, "w", encoding="utf-8") as f:
         f.write(html_content)
@@ -310,6 +520,9 @@ def _generate_full_report_html(results: "AuditResults") -> str:
     }
     status_color = status_colors.get(status, SEMANTIC_COLORS["fail"])
 
+    report_generated_at = datetime.now().astimezone().isoformat(timespec="seconds")
+    audit_run_at = results.run_timestamp or results.config.report_date or date.today().isoformat()
+
     # Generate sections
     section1_html = _generate_executive_summary_section(results, status, status_color)
     section2_html = _generate_descriptive_section(results)
@@ -318,6 +531,12 @@ def _generate_full_report_html(results: "AuditResults") -> str:
     section5_html = _generate_fairness_section(results)
     section6_html = _generate_flags_section(results)
     section7_html = _generate_governance_section(results)
+    audit_trail_html = _render_audit_trail_html(
+        results,
+        None,
+        report_generated_at,
+        title="Section 8: Audit Trail",
+    )
 
     html = f"""<!DOCTYPE html>
 <html lang="en">
@@ -332,11 +551,12 @@ def _generate_full_report_html(results: "AuditResults") -> str:
             --pass-color: {SEMANTIC_COLORS["pass"]};
             --warn-color: {SEMANTIC_COLORS["warn"]};
             --fail-color: {SEMANTIC_COLORS["fail"]};
-            --bg-color: #f8f9fa;
+            --bg-color: #ffffff;
             --text-color: #212529;
             --primary-color: #2c5282;
             --secondary-color: #4a5568;
             --border-color: #e2e8f0;
+            --section-bg: #ffffff;
         }}
 
         * {{ box-sizing: border-box; }}
@@ -344,18 +564,18 @@ def _generate_full_report_html(results: "AuditResults") -> str:
         /* Scientific Publication Style - Large, Clear, Readable */
         body {{
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-            font-size: 16px;
+            font-size: 15px;
             color: var(--text-color);
             background-color: var(--bg-color);
-            line-height: 1.6;
+            line-height: 1.45;
             margin: 0;
             padding: 0;
         }}
 
         .container {{
-            max-width: 1100px;
+            max-width: 1000px;
             margin: 0 auto;
-            padding: 40px 20px;
+            padding: 32px 20px;
         }}
 
         h1, h2, h3 {{
@@ -365,16 +585,17 @@ def _generate_full_report_html(results: "AuditResults") -> str:
         }}
 
         /* Publication-style large headers - fixed sizes for HTML readability */
-        h1 {{ font-size: 32px; margin-bottom: 12px; }}
-        h2 {{ font-size: 24px; margin-top: 40px; border-bottom: 2px solid var(--primary-color); padding-bottom: 10px; }}
-        h3 {{ font-size: 20px; margin-top: 28px; color: var(--secondary-color); }}
+        h1 {{ font-size: 28px; margin-bottom: 10px; }}
+        h2 {{ font-size: 20px; margin-top: 32px; border-bottom: 1px solid var(--border-color); padding-bottom: 8px; }}
+        h3 {{ font-size: 16px; margin-top: 22px; color: var(--secondary-color); }}
 
         .header {{
-            background: white;
-            padding: 30px;
-            border-radius: 8px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-            margin-bottom: 30px;
+            background: transparent;
+            padding: 12px 0 18px 0;
+            border-bottom: 2px solid var(--border-color);
+            box-shadow: none;
+            border-radius: 0;
+            margin-bottom: 24px;
         }}
 
         /* Publication readable metadata */
@@ -382,27 +603,28 @@ def _generate_full_report_html(results: "AuditResults") -> str:
 
         .status-badge {{
             display: inline-block;
-            padding: 14px 28px;
+            padding: 10px 20px;
             border-radius: 6px;
             font-weight: 700;
-            font-size: 18px;
+            font-size: 16px;
             color: white;
             background-color: {status_color};
-            margin: 16px 0;
+            margin: 12px 0;
         }}
 
         .section {{
-            background: white;
-            padding: 28px;
-            border-radius: 8px;
-            margin-bottom: 24px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            background: var(--section-bg);
+            padding: 20px;
+            border-radius: 6px;
+            margin-bottom: 18px;
+            border: 1px solid var(--border-color);
+            box-shadow: none;
         }}
 
         .scorecard {{
             display: flex;
-            gap: 20px;
-            margin: 24px 0;
+            gap: 16px;
+            margin: 20px 0;
             flex-wrap: wrap;
         }}
 
@@ -410,14 +632,14 @@ def _generate_full_report_html(results: "AuditResults") -> str:
             flex: 1;
             min-width: 140px;
             text-align: center;
-            padding: 20px;
-            border-radius: 8px;
-            background: var(--bg-color);
+            padding: 14px;
+            border-radius: 6px;
+            background: #f9fafb;
         }}
 
         /* Large scorecard numbers */
         .scorecard-value {{
-            font-size: 36px;
+            font-size: 28px;
             font-weight: 700;
         }}
 
@@ -436,14 +658,16 @@ def _generate_full_report_html(results: "AuditResults") -> str:
         table {{
             width: 100%;
             border-collapse: collapse;
-            margin: 20px 0;
-            font-size: 15px;
+            margin: 16px 0;
+            font-size: 14px;
         }}
 
         th, td {{
-            padding: 14px 16px;
+            padding: 10px 12px;
             text-align: left;
             border-bottom: 1px solid var(--border-color);
+            word-break: break-word;
+            white-space: normal;
         }}
 
         th {{
@@ -499,14 +723,14 @@ def _generate_full_report_html(results: "AuditResults") -> str:
         }}
 
         .metric-card {{
-            background: var(--bg-color);
-            padding: 20px;
+            background: #f9fafb;
+            padding: 16px;
             border-radius: 6px;
         }}
 
         /* Large metric values */
         .metric-value {{
-            font-size: 28px;
+            font-size: 22px;
             font-weight: 700;
             color: var(--primary-color);
         }}
@@ -534,14 +758,55 @@ def _generate_full_report_html(results: "AuditResults") -> str:
 
         /* Figure description boxes - explanatory text above charts */
         .figure-description {{
-            background: #f8f9fa;
-            border-left: 3px solid var(--primary-color);
-            padding: 12px 16px;
-            margin-bottom: 12px;
-            font-size: 14px;
+            background: transparent;
+            border-left: 2px solid var(--border-color);
+            padding: 8px 12px;
+            margin-bottom: 10px;
+            font-size: 13px;
             color: #555;
-            line-height: 1.5;
-            border-radius: 0 4px 4px 0;
+            line-height: 1.4;
+            border-radius: 0;
+        }}
+
+        .note {{
+            border-left: 3px solid var(--primary-color);
+            padding: 10px 12px;
+            margin: 12px 0;
+            font-size: 13px;
+            color: #4b5563;
+            background: #f9fafb;
+            border-radius: 4px;
+        }}
+
+        .note-subtle {{
+            border-left: 2px solid var(--border-color);
+            background: transparent;
+            color: #555;
+        }}
+
+        .audit-table {{
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }}
+
+        .audit-table th {{
+            width: 32%;
+            text-align: left;
+            padding: 8px 10px;
+            background: #f9fafb;
+            color: #555;
+            font-weight: 600;
+            border-bottom: 1px solid var(--border-color);
+            word-break: break-word;
+            white-space: normal;
+        }}
+
+        .audit-table td {{
+            padding: 8px 10px;
+            border-bottom: 1px solid var(--border-color);
+            word-break: break-word;
+            white-space: normal;
         }}
 
         @media print {{
@@ -559,6 +824,8 @@ def _generate_full_report_html(results: "AuditResults") -> str:
             <p class="metadata">
                 <strong>Model:</strong> {results.config.model_name} v{results.config.model_version}<br>
                 <strong>Report Date:</strong> {results.config.report_date or date.today().isoformat()}<br>
+                <strong>Audit Run:</strong> {audit_run_at}<br>
+                <strong>Report Generated:</strong> {report_generated_at}<br>
                 <strong>Primary Fairness Metric:</strong> {results.config.primary_fairness_metric.value if results.config.primary_fairness_metric else "Not specified"}
             </p>
         </header>
@@ -570,6 +837,7 @@ def _generate_full_report_html(results: "AuditResults") -> str:
         {section5_html}
         {section6_html}
         {section7_html}
+        {audit_trail_html}
 
         <footer class="footer">
             <p>{GOVERNANCE_DISCLAIMER_FULL}</p>
@@ -580,7 +848,7 @@ def _generate_full_report_html(results: "AuditResults") -> str:
                 <i>Lancet Digit Health</i> 2025;7(2):e100916.
                 DOI: <a href="https://doi.org/10.1016/j.landig.2025.100916" target="_blank" style="color: #2c5282; text-decoration: none;">10.1016/j.landig.2025.100916</a>
             </p>
-            <p>Generated by FairCareAI on {date.today().isoformat()}</p>
+            <p>Generated by FairCareAI on {report_generated_at}</p>
         </footer>
     </div>
 </body>
@@ -704,15 +972,15 @@ def _generate_descriptive_section(results: "AuditResults") -> str:
 
         <h3>Characteristics by Group</h3>
 
-        <div style="background: #fffef0; border-left: 4px solid #F0E442; padding: 16px; margin: 20px 0; border-radius: 4px;">
-            <h4 style="margin-top: 0;">📌 About Sensitive Attribute Stratification</h4>
-            <p style="color: #555; margin: 0; font-size: 14px;">
+        <div class="note note-subtle">
+            <strong>Note: Sensitive Attribute Stratification</strong>
+            <p style="margin: 6px 0 0 0;">
                 This analysis stratifies performance by the sensitive attributes defined by the data scientist.
                 Each attribute column (e.g., "race_ethnicity", "insurance") is analyzed independently.
                 Group values are atomic - for example, "Non-Hispanic White Female Ages 65-74" represents
                 ONE demographic group, not separate stratification by race AND age.
             </p>
-            <p style="color: #555; margin: 8px 0 0 0; font-size: 14px;">
+            <p style="margin: 6px 0 0 0;">
                 For cross-attribute analysis (e.g., race × age as 2D matrix), define multiple sensitive attributes separately.
             </p>
         </div>
@@ -826,12 +1094,12 @@ def _generate_performance_section(results: "AuditResults") -> str:
     <section class="section">
         <h2>Section 3: Overall Model Performance (TRIPOD+AI + Van Calster 2025)</h2>
 
-        <!-- Quick Summary for Busy Reviewers -->
-        <div style="background: #e8f4f8; border: 2px solid #0072B2; padding: 16px; margin: 20px 0; border-radius: 8px;">
-            <h4 style="margin-top: 0; color: #004080;">📊 Quick Summary</h4>
-            <p style="color: #555; margin: 0;">
+        <!-- Summary -->
+        <div class="note">
+            <strong>Summary</strong>
+            <p style="margin: 6px 0 0 0;">
                 The 4 gauges below provide an at-a-glance summary of model performance across discrimination, calibration, and classification domains.
-                Scroll down for detailed Van Calster 2025 statistical analysis.
+                Detailed Van Calster 2025 analysis follows.
             </p>
         </div>
 
@@ -928,18 +1196,18 @@ def _generate_performance_section(results: "AuditResults") -> str:
 
         <h4>4. Clinical Utility: Does the Model Improve Decisions?</h4>
 
-        <div style="background: #f8f9fa; border-left: 4px solid #0072B2; padding: 16px; margin: 20px 0; border-radius: 4px;">
-            <strong>What is Decision Curve Analysis?</strong>
-            <p style="margin: 8px 0; color: #555;">
+        <div class="note note-subtle">
+            <strong>Decision Curve Analysis</strong>
+            <p style="margin: 6px 0;">
                 Decision Curve Analysis answers the critical question: "Is using this model better than simple policies?"
                 Net benefit measures clinical value per 100 patients at different risk thresholds.
             </p>
-            <ul style="margin: 8px 0; color: #555;">
+            <ul style="margin: 6px 0;">
                 <li><strong>Blue line (Model):</strong> Net benefit of using this prediction model</li>
                 <li><strong>Gray dashed (Treat All):</strong> Intervene on everyone (wasteful, many false alarms)</li>
                 <li><strong>Gray solid (Treat None):</strong> Intervene on no one (misses all cases)</li>
             </ul>
-            <p style="margin: 8px 0; color: #555;">
+            <p style="margin: 6px 0;">
                 <strong>How to interpret:</strong> When the blue model line is above both gray reference lines,
                 the model adds clinical value. The range where this occurs shows the "useful threshold range"
                 for deployment.
@@ -1197,12 +1465,12 @@ def _generate_fairness_section(results: "AuditResults") -> str:
     <section class="section">
         <h2>Section 5: Fairness Assessment</h2>
 
-        <div style="background: #e8f4f8; border: 2px solid {metric_color}; padding: 20px; margin-bottom: 24px; border-radius: 8px;">
-            <h3 style="margin-top: 0; color: {metric_color};">Primary Fairness Metric: {selected_info["name"]}</h3>
-            <p style="margin: 8px 0;"><strong>Definition:</strong> {selected_info["description"]}</p>
-            <p style="margin: 8px 0;"><strong>What to look for:</strong> {selected_info["what_to_look_for"]}</p>
-            <p style="margin: 8px 0;"><strong>Threshold:</strong> {selected_info["threshold_note"]}</p>
-            <p style="margin: 8px 0 0 0; color: #666;"><strong>Justification:</strong> {justification}</p>
+        <div class="note" style="border-left-color: {metric_color};">
+            <strong>Primary Fairness Metric: {selected_info["name"]}</strong>
+            <p style="margin: 6px 0 0 0;"><strong>Definition:</strong> {selected_info["description"]}</p>
+            <p style="margin: 6px 0 0 0;"><strong>What to look for:</strong> {selected_info["what_to_look_for"]}</p>
+            <p style="margin: 6px 0 0 0;"><strong>Threshold:</strong> {selected_info["threshold_note"]}</p>
+            <p style="margin: 6px 0 0 0;"><strong>Justification:</strong> {justification}</p>
         </div>
 
         <h3>All Fairness Metrics by Attribute</h3>
@@ -1215,11 +1483,11 @@ def _generate_fairness_section(results: "AuditResults") -> str:
             <thead>
                 <tr>
                     <th>Attribute</th>
-                    <th colspan="2">Demographic Parity<br><span style="font-weight: normal; font-size: 11px;">Selection Rate Diff</span></th>
-                    <th colspan="2">Equal Opportunity<br><span style="font-weight: normal; font-size: 11px;">TPR Diff</span></th>
-                    <th colspan="2">Equalized Odds<br><span style="font-weight: normal; font-size: 11px;">Max(TPR, FPR) Diff</span></th>
-                    <th colspan="2">Predictive Parity<br><span style="font-weight: normal; font-size: 11px;">PPV Diff</span></th>
-                    <th colspan="2">Calibration<br><span style="font-weight: normal; font-size: 11px;">Cal Error Diff</span></th>
+                    <th colspan="2">Demographic Parity<br><span style="font-weight: normal; font-size: 12px;">Selection Rate Diff</span></th>
+                    <th colspan="2">Equal Opportunity<br><span style="font-weight: normal; font-size: 12px;">TPR Diff</span></th>
+                    <th colspan="2">Equalized Odds<br><span style="font-weight: normal; font-size: 12px;">Max(TPR, FPR) Diff</span></th>
+                    <th colspan="2">Predictive Parity<br><span style="font-weight: normal; font-size: 12px;">PPV Diff</span></th>
+                    <th colspan="2">Calibration<br><span style="font-weight: normal; font-size: 12px;">Cal Error Diff</span></th>
                 </tr>
             </thead>
             <tbody>
@@ -1228,11 +1496,11 @@ def _generate_fairness_section(results: "AuditResults") -> str:
         </table>
         </div>
 
-        <div style="margin-top: 20px; padding: 16px; background: #fffdf0; border-left: 4px solid #F0E442; border-radius: 4px;">
-            <h4 style="margin-top: 0; color: #856404;">Why Your Metric Choice Matters:</h4>
-            <p style="margin-bottom: 8px;">The <strong>impossibility theorem</strong> proves that when base rates differ between groups,
+        <div class="note note-subtle" style="margin-top: 16px;">
+            <strong>Why your metric choice matters:</strong>
+            <p style="margin: 6px 0;">The <strong>impossibility theorem</strong> proves that when base rates differ between groups,
             no model can satisfy all fairness criteria simultaneously. Your choice reflects your values:</p>
-            <ul style="margin-bottom: 0; font-size: 14px;">
+            <ul style="margin: 6px 0 0 0;">
                 <li><strong>Demographic Parity:</strong> Prioritizes equal selection rates (good for resource allocation)</li>
                 <li><strong>Equal Opportunity:</strong> Prioritizes equal detection of true cases (good for screening)</li>
                 <li><strong>Equalized Odds:</strong> Balances detection AND false alarms (good for interventions)</li>
@@ -1344,6 +1612,11 @@ def _generate_report_html(
         summary.worst_disparity_value,
     )
 
+    report_generated_at = datetime.now().astimezone().isoformat(timespec="seconds")
+    audit_run_at = (
+        results.run_timestamp if results is not None else None
+    ) or summary.audit_date or date.today().isoformat()
+
     # Generate charts if requested
     charts_html = ""
     if include_charts:
@@ -1382,6 +1655,13 @@ def _generate_report_html(
         else:
             charts_html = '<p class="chart-placeholder">No chart data available.</p>'
 
+    audit_trail_html = _render_audit_trail_html(
+        results,
+        summary,
+        report_generated_at,
+        title="Audit Trail",
+    )
+
     html = f"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -1395,7 +1675,7 @@ def _generate_report_html(
             --pass-color: {SEMANTIC_COLORS["pass"]};
             --warn-color: {SEMANTIC_COLORS["warn"]};
             --fail-color: {SEMANTIC_COLORS["fail"]};
-            --bg-color: {SEMANTIC_COLORS["background"]};
+            --bg-color: #ffffff;
             --text-color: {SEMANTIC_COLORS["text"]};
         }}
 
@@ -1405,13 +1685,13 @@ def _generate_report_html(
 
         body {{
             font-family: {TYPOGRAPHY["data_font"]};
-            font-size: 16px;
+            font-size: 15px;
             color: var(--text-color);
             background-color: var(--bg-color);
-            line-height: 1.6;
+            line-height: 1.45;
             max-width: 900px;
             margin: 0 auto;
-            padding: 40px 20px;
+            padding: 32px 20px;
         }}
 
         h1, h2, h3 {{
@@ -1504,6 +1784,32 @@ def _generate_report_html(
             color: #666;
         }}
 
+        .audit-table {{
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+            margin-top: 12px;
+        }}
+
+        .audit-table th {{
+            width: 32%;
+            text-align: left;
+            padding: 8px 10px;
+            background: #f5f5f5;
+            color: #555;
+            font-weight: 600;
+            border-bottom: 1px solid #ddd;
+            word-break: break-word;
+            white-space: normal;
+        }}
+
+        .audit-table td {{
+            padding: 8px 10px;
+            border-bottom: 1px solid #ddd;
+            word-break: break-word;
+            white-space: normal;
+        }}
+
         @media print {{
             body {{
                 max-width: 100%;
@@ -1515,21 +1821,22 @@ def _generate_report_html(
             margin: 30px 0;
         }}
 
-        .charts-section h3 {{
-            font-size: 20px;
-            margin-top: 30px;
-            margin-bottom: 15px;
-            color: #2c5282;
-        }}
-    </style>
-    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
-</head>
-<body>
-    <header class="header">
-        <h1>Equity Audit Report</h1>
+	        .charts-section h3 {{
+	            font-size: 20px;
+	            margin-top: 30px;
+	            margin-bottom: 15px;
+	            color: #2c5282;
+	        }}
+	    </style>
+	</head>
+	<body>
+	    <header class="header">
+	        <h1>Equity Audit Report</h1>
         <p class="metadata">
             Model: <strong>{summary.model_name}</strong><br>
             Audit Date: {summary.audit_date}<br>
+            Audit Run: {audit_run_at}<br>
+            Report Generated: {report_generated_at}<br>
             Samples: {summary.n_samples:,} | Groups: {summary.n_groups} | Threshold: {summary.threshold:.0%}
         </p>
     </header>
@@ -1562,11 +1869,12 @@ def _generate_report_html(
 
     <h2>Detailed Analysis</h2>
     {charts_html}
+    {audit_trail_html}
 
     <footer class="footer">
         <p>
             Generated by FairCareAI |
-            Report generated on {date.today().isoformat()}
+            Report generated on {report_generated_at}
         </p>
     </footer>
 </body>
@@ -1584,13 +1892,13 @@ def _get_print_css() -> str:
 
         @top-right {
             content: "FairCareAI Audit Report";
-            font-size: 10pt;
+            font-size: 12pt;
             color: #666;
         }
 
         @bottom-center {
             content: counter(page) " of " counter(pages);
-            font-size: 10pt;
+            font-size: 12pt;
             color: #666;
         }
     }
@@ -1788,6 +2096,7 @@ def generate_governance_html_report(
     results: "AuditResults",
     output_path: str | Path,
     metric_config: "MetricDisplayConfig | None" = None,
+    standalone: bool = True,
 ) -> Path:
     """Generate streamlined HTML report for governance committees.
 
@@ -1815,12 +2124,7 @@ def generate_governance_html_report(
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
     html_content = _generate_governance_html(results)
-
-    # Embed Plotly.js for interactive charts
-    html_content = html_content.replace(
-        "</head>",
-        '<script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script></head>',
-    )
+    html_content = _inject_plotlyjs(html_content, standalone=standalone)
 
     with open(output_path, "w", encoding="utf-8") as f:
         f.write(html_content)
@@ -1869,12 +2173,7 @@ def generate_governance_pdf_report(
 
     # Generate HTML with interactive charts
     html_content = _generate_governance_html(results)
-
-    # Embed Plotly.js for charts
-    html_content = html_content.replace(
-        "</head>",
-        '<script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script></head>',
-    )
+    html_content = _inject_plotlyjs(html_content, standalone=True)
 
     # Use Playwright to render HTML to PDF (handles Jupyter/async context)
     _run_playwright_pdf_generation(html_content, output_path)
@@ -1916,6 +2215,8 @@ def _generate_governance_html(results: "AuditResults") -> str:
         "CONDITIONAL": "Issues Near Threshold",
         "REVIEW": "Issues Exceeded Threshold",
     }
+    report_generated_at = datetime.now().astimezone().isoformat(timespec="seconds")
+    audit_run_at = results.run_timestamp or results.config.report_date or date.today().isoformat()
 
     # Generate interactive figures (work in both HTML and PDF via Playwright)
     try:
@@ -1985,6 +2286,13 @@ def _generate_governance_html(results: "AuditResults") -> str:
         primary_metric, ("Not Specified", "No primary fairness metric was selected")
     )
     metric_justification = results.config.fairness_justification or "Not provided"
+
+    audit_trail_html = _render_audit_trail_html(
+        results,
+        None,
+        report_generated_at,
+        title="Audit Trail",
+    )
 
     html = f"""<!DOCTYPE html>
 <html lang="en">
@@ -2148,6 +2456,32 @@ def _generate_governance_html(results: "AuditResults") -> str:
             border-top: 1px solid #e2e8f0;
         }}
 
+        .audit-table {{
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+            margin-top: 12px;
+        }}
+
+        .audit-table th {{
+            width: 32%;
+            text-align: left;
+            padding: 8px 10px;
+            background: #f5f5f5;
+            color: #555;
+            font-weight: 600;
+            border-bottom: 1px solid #e2e8f0;
+            word-break: break-word;
+            white-space: normal;
+        }}
+
+        .audit-table td {{
+            padding: 8px 10px;
+            border-bottom: 1px solid #e2e8f0;
+            word-break: break-word;
+            white-space: normal;
+        }}
+
         .disclaimer {{
             font-size: 14px;
             color: #666;
@@ -2241,7 +2575,9 @@ def _generate_governance_html(results: "AuditResults") -> str:
             <p style="font-size: 20px; color: #666;">Governance Committee Report</p>
             <p class="metadata">
                 <strong>{results.config.model_name}</strong> v{results.config.model_version}<br>
-                {results.config.report_date or date.today().isoformat()}
+                Report Date: {results.config.report_date or date.today().isoformat()}<br>
+                Audit Run: {audit_run_at}<br>
+                Report Generated: {report_generated_at}
             </p>
         </header>
 
@@ -2373,6 +2709,8 @@ def _generate_governance_html(results: "AuditResults") -> str:
             </div>
         </section>
 
+        {audit_trail_html}
+
         <footer class="footer">
             <p>{GOVERNANCE_DISCLAIMER_FULL}</p>
             <p style="font-size: 14px; margin-top: 12px;">
@@ -2382,7 +2720,7 @@ def _generate_governance_html(results: "AuditResults") -> str:
                 <i>Lancet Digit Health</i> 2025;7(2):e100916.
                 DOI: <a href="https://doi.org/10.1016/j.landig.2025.100916" target="_blank" style="color: #2c5282; text-decoration: none;">10.1016/j.landig.2025.100916</a>
             </p>
-            <p>Generated by FairCareAI on {date.today().isoformat()}</p>
+            <p>Generated by FairCareAI on {report_generated_at}</p>
         </footer>
     </div>
 </body>
@@ -2588,13 +2926,13 @@ def _get_governance_print_css() -> str:
 
         @top-right {
             content: "Governance Report";
-            font-size: 9pt;
+            font-size: 12pt;
             color: #666;
         }
 
         @bottom-center {
             content: counter(page) " of " counter(pages);
-            font-size: 9pt;
+            font-size: 12pt;
             color: #666;
         }
     }
@@ -2604,7 +2942,7 @@ def _get_governance_print_css() -> str:
     }
 
     body {
-        font-size: 11pt;
+        font-size: 12pt;
     }
 
     h1 { font-size: 24pt; }

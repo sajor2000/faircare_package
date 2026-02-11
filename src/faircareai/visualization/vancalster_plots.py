@@ -486,11 +486,15 @@ def create_calibration_plot_by_subgroup(
         if "error" in group_data:
             continue
 
-        cal_curve = group_data.get("calibration_curve", {})
+        cal_curve_smoothed = group_data.get("calibration_curve_smoothed", {}) or {}
+        smoothed_pred = cal_curve_smoothed.get("prob_pred", [])
+        smoothed_true = cal_curve_smoothed.get("prob_true", [])
+
+        cal_curve = group_data.get("calibration_curve", {}) or {}
         prob_pred = cal_curve.get("prob_pred", [])
         prob_true = cal_curve.get("prob_true", [])
 
-        if not prob_pred or not prob_true:
+        if not (smoothed_pred and smoothed_true) and not (prob_pred and prob_true):
             continue
 
         color = GROUP_COLORS[i % len(GROUP_COLORS)]
@@ -514,17 +518,41 @@ def create_calibration_plot_by_subgroup(
                 "Observed: %{y:.1%}<extra></extra>"
             )
 
-        fig.add_trace(
-            go.Scatter(
-                x=prob_pred,
-                y=prob_true,
-                mode="lines+markers",
-                line=dict(color=color, width=2),
-                marker=dict(size=8, color=color),
-                name=f"{group_name} (n={n:,})",
-                hovertemplate=hover_template,
+        if smoothed_pred and smoothed_true:
+            fig.add_trace(
+                go.Scatter(
+                    x=smoothed_pred,
+                    y=smoothed_true,
+                    mode="lines",
+                    line=dict(color=color, width=2),
+                    name=f"{group_name} (n={n:,})",
+                    hovertemplate=hover_template,
+                )
             )
-        )
+            if prob_pred and prob_true:
+                fig.add_trace(
+                    go.Scatter(
+                        x=prob_pred,
+                        y=prob_true,
+                        mode="markers",
+                        marker=dict(size=6, color=color, opacity=0.6),
+                        name=f"{group_name} (binned)",
+                        hovertemplate=hover_template,
+                        showlegend=False,
+                    )
+                )
+        else:
+            fig.add_trace(
+                go.Scatter(
+                    x=prob_pred,
+                    y=prob_true,
+                    mode="lines+markers",
+                    line=dict(color=color, width=2),
+                    marker=dict(size=8, color=color),
+                    name=f"{group_name} (n={n:,})",
+                    hovertemplate=hover_template,
+                )
+            )
 
     # Generate alt text
     alt_text = _generate_calibration_alt_text(results, title)

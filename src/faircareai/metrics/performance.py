@@ -38,6 +38,7 @@ from sklearn.calibration import calibration_curve
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import (
     average_precision_score,
+    auc,
     brier_score_loss,
     confusion_matrix,
     f1_score,
@@ -92,7 +93,7 @@ def compute_overall_performance(
     Returns:
         Dict containing:
         - discrimination: AUROC, AUPRC with 95% CI, curve data
-        - calibration: Brier, slope, intercept, E/O ratio, ICI
+        - calibration: Brier, slope, intercept, O:E ratio, ICI
         - classification_at_threshold: Sens, Spec, PPV, NPV, F1, NNE
         - threshold_analysis: metrics across multiple cutoffs
         - decision_curve: DCA net benefit data
@@ -150,11 +151,11 @@ def compute_discrimination_metrics(
         n_bootstrap: Number of bootstrap iterations.
 
     Returns:
-        Dict with AUROC, AUPRC, and curve data.
+        Dict with AUROC, AUPRC, AP, and curve data.
     """
     # Point estimates
     auroc = roc_auc_score(y_true, y_prob)
-    auprc = average_precision_score(y_true, y_prob)
+    ap = average_precision_score(y_true, y_prob)
     brier = brier_score_loss(y_true, y_prob)
 
     # ROC curve data
@@ -162,10 +163,12 @@ def compute_discrimination_metrics(
 
     # PR curve data
     precision, recall, pr_thresholds = precision_recall_curve(y_true, y_prob)
+    auprc = auc(recall, precision)
 
     result = {
         "auroc": float(auroc),
         "auprc": float(auprc),
+        "average_precision": float(ap),
         "brier_score": float(brier),
         "roc_curve": {
             "fpr": fpr.tolist(),
@@ -193,10 +196,14 @@ def compute_discrimination_metrics(
         )
 
         # AUPRC bootstrap
+        def _auprc_metric(yt: np.ndarray, yp: np.ndarray) -> float:
+            prec, rec, _ = precision_recall_curve(yt, yp)
+            return float(auc(rec, prec))
+
         auprc_samples, _ = bootstrap_metric(
             y_true,
             y_prob,
-            lambda yt, yp: average_precision_score(yt, yp),
+            _auprc_metric,
             n_bootstrap=n_bootstrap,
             seed=42,
             stratified=False,
@@ -230,7 +237,7 @@ def compute_calibration_metrics(
         n_bins: Number of bins for calibration curve.
 
     Returns:
-        Dict with Brier score, slope, intercept, E/O ratio, ICI.
+        Dict with Brier score, slope, intercept, O:E ratio, and ICI.
     """
     # Brier score
     brier = brier_score_loss(y_true, y_prob)
@@ -241,11 +248,26 @@ def compute_calibration_metrics(
     brier_null = prevalence * (1 - prevalence)
     brier_scaled = 1 - (brier / brier_null) if brier_null > 0 else 0.0
 
-    # Calibration curve
+    # Calibration curve (binned)
     try:
         prob_true, prob_pred = calibration_curve(y_true, y_prob, n_bins=n_bins, strategy="uniform")
     except ValueError:
         prob_true, prob_pred = np.array([]), np.array([])
+
+    # Smoothed calibration curve using LOWESS (Van Calster reference)
+    smoothed_pred = np.array([])
+    smoothed_true = np.array([])
+    try:
+        from statsmodels.nonparametric.smoothers_lowess import lowess
+
+        order = np.argsort(y_prob)
+        prob_sorted = y_prob[order]
+        y_sorted = y_true[order]
+        lowess_result = lowess(y_sorted, prob_sorted, frac=0.75, it=0, return_sorted=True)
+        smoothed_pred = lowess_result[:, 0]
+        smoothed_true = np.clip(lowess_result[:, 1], 0.0, 1.0)
+    except Exception as e:
+        logger.warning("LOWESS calibration smoothing failed (%s): %s", type(e).__name__, str(e))
 
     # Calibration intercept and slope per Van Calster et al. methodology
     # Intercept: fit logistic model with logit(p) as OFFSET (coefficient fixed at 1)
@@ -284,35 +306,34 @@ def compute_calibration_metrics(
             str(e),
         )
 
-    # E/O ratio (Expected/Observed)
+    # Calibration-in-the-large ratio
+    # O:E ratio (Observed / Expected) per Van Calster et al.
     expected = np.sum(y_prob)
     observed = np.sum(y_true)
+    oe_ratio = float(observed / expected) if expected > 0 else None
+    # Deprecated legacy E/O ratio (Expected / Observed). Use oe_ratio; remove in next major version.
     eo_ratio = expected / observed if observed > 0 else float("inf")
 
-    # ICI (Integrated Calibration Index) - average absolute calibration error
-    # Per Van Calster: mean(|smoothed_observed - predicted|)
+    # ICI/ECI/E_max using smoothed curve when available (Van Calster)
+    error_pred = smoothed_pred if len(smoothed_pred) > 0 else prob_pred
+    error_true = smoothed_true if len(smoothed_true) > 0 else prob_true
+
     ici = 0.0
-    if len(prob_true) > 0:
-        ici = float(np.mean(np.abs(prob_pred - prob_true)))
-
-    # ECI (E-statistic Calibration Index) - squared calibration error normalized
-    # Per Van Calster: mean((smoothed_observed - predicted)^2) / mean((prevalence - predicted)^2)
     eci = 0.0
-    if len(prob_true) > 0:
-        eci_numer = np.mean((prob_true - prob_pred) ** 2)
-        eci_denom = np.mean((prevalence - prob_pred) ** 2)
-        eci = float(eci_numer / eci_denom) if eci_denom > 0 else 0.0
-
-    # E_max (maximum calibration error)
     e_max = 0.0
-    if len(prob_true) > 0:
-        e_max = float(np.max(np.abs(prob_pred - prob_true)))
+    if len(error_true) > 0:
+        ici = float(np.mean(np.abs(error_true - error_pred)))
+        eci_numer = np.mean((error_true - error_pred) ** 2)
+        eci_denom = np.mean((prevalence - error_pred) ** 2)
+        eci = float(eci_numer / eci_denom) if eci_denom > 0 else 0.0
+        e_max = float(np.max(np.abs(error_true - error_pred)))
 
     return {
         "brier_score": float(brier),
         "brier_scaled": float(brier_scaled),  # Van Calster BSS
         "calibration_slope": slope,
         "calibration_intercept": intercept,
+        "oe_ratio": oe_ratio,
         "eo_ratio": float(eo_ratio),
         "ici": ici,
         "eci": eci,  # Van Calster E-statistic
@@ -321,6 +342,12 @@ def compute_calibration_metrics(
             "prob_true": prob_true.tolist() if len(prob_true) > 0 else [],
             "prob_pred": prob_pred.tolist() if len(prob_pred) > 0 else [],
             "n_bins": n_bins,
+        },
+        "calibration_curve_smoothed": {
+            "prob_true": smoothed_true.tolist() if len(smoothed_true) > 0 else [],
+            "prob_pred": smoothed_pred.tolist() if len(smoothed_pred) > 0 else [],
+            "method": "lowess",
+            "frac": 0.75,
         },
         "interpretation": _interpret_calibration(slope, brier),
     }
@@ -642,7 +669,8 @@ def compute_subgroup_performance(
         # Discrimination
         try:
             auroc = roc_auc_score(y_true, y_prob)
-            auprc = average_precision_score(y_true, y_prob)
+            precision, recall, _ = precision_recall_curve(y_true, y_prob)
+            auprc = auc(recall, precision)
         except ValueError:
             auroc = None
             auprc = None

@@ -189,7 +189,10 @@ class DiscriminationMetrics(TypedDict):
     """Area Under ROC Curve."""
 
     auprc: float
-    """Area Under Precision-Recall Curve (Average Precision)."""
+    """Area Under Precision-Recall Curve."""
+
+    average_precision: NotRequired[float]
+    """Average precision (AP) score."""
 
     brier_score: float
     """Brier score for calibration."""
@@ -231,8 +234,11 @@ class CalibrationMetrics(TypedDict):
     calibration_intercept: float
     """Calibration intercept from linear regression."""
 
-    eo_ratio: float
-    """Expected/Observed ratio."""
+    oe_ratio: float | None
+    """Observed/Expected ratio (calibration-in-the-large)."""
+
+    eo_ratio: NotRequired[float]
+    """Deprecated: Expected/Observed ratio. Use oe_ratio. Will be removed in next major release."""
 
     ici: float
     """Integrated Calibration Index (mean absolute calibration error)."""

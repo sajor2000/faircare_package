@@ -281,11 +281,11 @@ class TestComputeCalibrationMetrics:
         assert "prob_pred" in result["calibration_curve"]
         assert "n_bins" in result["calibration_curve"]
 
-    def test_eo_ratio_computed(self, well_calibrated_data: tuple[np.ndarray, np.ndarray]) -> None:
-        """Test that E/O ratio is computed."""
+    def test_oe_ratio_computed(self, well_calibrated_data: tuple[np.ndarray, np.ndarray]) -> None:
+        """Test that O:E ratio is computed."""
         y_true, y_prob = well_calibrated_data
         result = compute_calibration_metrics(y_true, y_prob)
-        assert "eo_ratio" in result
+        assert "oe_ratio" in result
 
     def test_ici_computed(self, well_calibrated_data: tuple[np.ndarray, np.ndarray]) -> None:
         """Test that ICI is computed."""
@@ -310,12 +310,19 @@ class TestComputeCalibrationMetrics:
         assert "interpretation" in result
         assert isinstance(result["interpretation"], str)
 
-    def test_eo_ratio_inf_when_no_positives(self) -> None:
-        """Test E/O ratio is inf when no positive outcomes."""
+    def test_oe_ratio_zero_when_no_positives(self) -> None:
+        """Test O:E ratio is zero when no positive outcomes but expected > 0."""
         y_true = np.zeros(100)
         y_prob = np.random.uniform(0.1, 0.3, 100)
         result = compute_calibration_metrics(y_true, y_prob)
-        assert result["eo_ratio"] == float("inf")
+        assert result["oe_ratio"] == 0.0
+
+    def test_oe_ratio_none_when_expected_zero(self) -> None:
+        """Test O:E ratio is None when expected events are zero."""
+        y_true = np.zeros(100)
+        y_prob = np.zeros(100)
+        result = compute_calibration_metrics(y_true, y_prob)
+        assert result["oe_ratio"] is None
 
 
 class TestInterpretCalibration:

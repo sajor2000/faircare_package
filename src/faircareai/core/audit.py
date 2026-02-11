@@ -9,6 +9,7 @@ context, organizational values, and governance frameworks.
 """
 
 from dataclasses import dataclass, field
+from datetime import datetime
 from decimal import Decimal
 from pathlib import Path
 from typing import Any
@@ -739,6 +740,7 @@ class FairCareAudit:
         self._validate_audit_config()
 
         results = AuditResults(config=self.config, threshold=self.threshold)
+        results.run_timestamp = datetime.now().astimezone().isoformat(timespec="seconds")
 
         # Section 1-4: Computation
         results.descriptive_stats = self._compute_descriptive_statistics()

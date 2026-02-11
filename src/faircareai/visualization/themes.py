@@ -282,31 +282,31 @@ TYPOGRAPHY: dict[str, Any] = {
     "data_font": "Inter, -apple-system, BlinkMacSystemFont, sans-serif",  # Sans for data
     "mono_font": "JetBrains Mono, Menlo, Monaco, monospace",
     # Heading hierarchy - optimized for publication
-    "heading_size": 18,  # h1 - main figure title
-    "subheading_size": 14,  # h2 - section headers
-    "h3_size": 13,  # h3 - subsections
-    "h4_size": 12,  # h4
-    "h5_size": 11,  # h5
-    "h6_size": 10,  # h6
+    "heading_size": 20,  # h1 - main figure title
+    "subheading_size": 16,  # h2 - section headers
+    "h3_size": 14,  # h3 - subsections
+    "h4_size": 13,  # h4
+    "h5_size": 12,  # h5
+    "h6_size": 12,  # h6
     # Body and label sizes
-    "body_size": 11,  # body text
-    "label_size": 10,  # tick labels
-    "small_size": 10,  # footnotes, source notes (WCAG 2.1 AA minimum)
+    "body_size": 13,  # body text
+    "label_size": 12,  # tick labels
+    "small_size": 12,  # footnotes, source notes (WCAG 2.1 AA minimum)
     # Font weights
     "heading_weight": 700,  # Bold titles
     "subheading_weight": 600,
     "label_weight": 500,
     "line_height": 1.4,
     # Chart typography - SCIENTIFIC PUBLICATION STANDARD
-    "headline_size": 16,  # Main figure title (serif, bold)
-    "deck_size": 12,      # Subtitle/context (sans, normal)
-    "annotation_size": 10, # Data labels on charts
-    "source_size": 10,    # Source attribution (italic, WCAG 2.1 AA minimum)
-    "callout_size": 10,   # Callout annotations
+    "headline_size": 18,  # Main figure title (serif, bold)
+    "deck_size": 13,      # Subtitle/context (sans, normal)
+    "annotation_size": 12, # Data labels on charts
+    "source_size": 12,    # Source attribution (italic, WCAG 2.1 AA minimum)
+    "callout_size": 12,   # Callout annotations
     # Axis typography - readable at publication scale
-    "axis_title_size": 11,  # X/Y axis labels
-    "tick_size": 10,        # Tick labels
-    "legend_size": 10,      # Legend text
+    "axis_title_size": 13,  # X/Y axis labels
+    "tick_size": 12,        # Tick labels
+    "legend_size": 12,      # Legend text
     # PowerPoint/Export specific (larger for presentations)
     "ppt_title_size": 28,   # Slide titles
     "ppt_subtitle_size": 20, # Slide subtitles
@@ -425,7 +425,7 @@ METRIC_CATEGORY_CSS = """
     display: inline-block;
     background: #4CAF50;
     color: white;
-    font-size: 10px;
+    font-size: 12px;
     font-weight: 600;
     padding: 2px 8px;
     border-radius: 10px;
@@ -437,7 +437,7 @@ METRIC_CATEGORY_CSS = """
     display: inline-block;
     background: #FFC107;
     color: #6D4C41;
-    font-size: 10px;
+    font-size: 12px;
     font-weight: 600;
     padding: 2px 8px;
     border-radius: 10px;
@@ -449,7 +449,7 @@ METRIC_CATEGORY_CSS = """
     display: inline-block;
     background: #F44336;
     color: white;
-    font-size: 10px;
+    font-size: 12px;
     font-weight: 600;
     padding: 2px 8px;
     border-radius: 10px;
@@ -466,7 +466,7 @@ METRIC_CATEGORY_CSS = """
 }
 
 .optional-section-header {
-    font-size: 12px;
+    font-size: 13px;
     font-weight: 600;
     color: #F57C00;
     text-transform: uppercase;
@@ -480,7 +480,7 @@ METRIC_CATEGORY_CSS = """
     border-radius: 4px;
     padding: 12px 16px;
     margin: 8px 0;
-    font-size: 13px;
+    font-size: 14px;
     color: #E65100;
 }
 
@@ -628,6 +628,10 @@ def get_plotly_template(editorial_mode: bool = True) -> dict:
                 },
                 "bgcolor": "rgba(255,255,255,0.9)",  # Semi-transparent white
             },
+            "uniformtext": {
+                "minsize": TYPOGRAPHY["annotation_size"],
+                "mode": "hide",
+            },
             "hoverlabel": {
                 "bgcolor": "#FFFFFF",
                 "bordercolor": "#CCCCCC",
@@ -673,7 +677,11 @@ def apply_faircareai_theme(fig: Any) -> Any:
         paper_bgcolor="#FFFFFF",  # Pure white
         plot_bgcolor="#FFFFFF",  # Pure white
         hoverlabel=layout_updates.get("hoverlabel", {}),
+        uniformtext=layout_updates.get("uniformtext", {}),
     )
+
+    fig.update_xaxes(automargin=True)
+    fig.update_yaxes(automargin=True)
 
     return fig
 
@@ -762,7 +770,7 @@ STREAMLIT_CSS = """
 
     [data-testid="stMetricLabel"] {
         font-family: 'Inter', sans-serif !important;
-        font-size: 12px !important;
+        font-size: 13px !important;
         font-weight: 600 !important;
         text-transform: uppercase;
         letter-spacing: 0.05em;
@@ -822,7 +830,7 @@ STREAMLIT_CSS = """
 
     .scorecard-label {
         font-family: 'Inter', sans-serif;
-        font-size: 12px;
+        font-size: 13px;
         font-weight: 600;
         text-transform: uppercase;
         letter-spacing: 0.1em;
@@ -845,7 +853,7 @@ STREAMLIT_CSS = """
     .dataframe th {
         background: #FAFAFA !important;
         font-weight: 600 !important;
-        font-size: 12px !important;
+        font-size: 13px !important;
         text-transform: uppercase;
         letter-spacing: 0.05em;
         color: #191919 !important;  /* Dark text for WCAG contrast */
@@ -1206,11 +1214,11 @@ def render_metric_card(
 
     delta_html = ""
     if delta:
-        delta_html = f'<div style="font-size: 12px; color: #6B6B6B; margin-top: 4px;">{delta}</div>'
+        delta_html = f'<div style="font-size: 13px; color: #6B6B6B; margin-top: 4px;">{delta}</div>'
 
     return f"""
     <div style="background: #FFFFFF; border: 1px solid #E3E2E0; border-radius: 8px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
-        <div style="font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: #6B6B6B; margin-bottom: 8px;">{label}</div>
+        <div style="font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: #6B6B6B; margin-bottom: 8px;">{label}</div>
         <div style="font-size: 32px; font-weight: 700; color: {color}; line-height: 1;">{value}</div>
         {delta_html}
     </div>

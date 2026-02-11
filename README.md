@@ -661,6 +661,8 @@ Results container with visualization and export capabilities.
 
 **Attributes**:
 - `config`: FairnessConfig used for the audit
+- `audit_id`: Unique identifier for this audit run
+- `run_timestamp`: ISO timestamp when the audit executed
 - `descriptive_stats`: Cohort characteristics (Table 1)
 - `overall_performance`: TRIPOD+AI metrics
 - `subgroup_performance`: Performance by demographic group
@@ -710,6 +712,8 @@ results.to_json("metrics.json")
 # Open in browser
 results.to_html("report.html", open_browser=True)
 ```
+
+Reports include an **Audit Trail** section with audit ID, audit run timestamp, report generated time, model/version, and configuration context. JSON exports include `audit_metadata` with `audit_id` and `run_timestamp`.
 
 ### Enums
 

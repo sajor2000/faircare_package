@@ -267,7 +267,10 @@ def plot_calibration_curve(
     perf = results.overall_performance
     cal = perf.get("calibration", {})
     cal_curve = cal.get("calibration_curve", {})
+    cal_curve_smoothed = cal.get("calibration_curve_smoothed", {})
 
+    smoothed_true = cal_curve_smoothed.get("prob_true", [])
+    smoothed_pred = cal_curve_smoothed.get("prob_pred", [])
     prob_true = cal_curve.get("prob_true", [])
     prob_pred = cal_curve.get("prob_pred", [])
 
@@ -284,8 +287,35 @@ def plot_calibration_curve(
         )
     )
 
-    # Calibration curve
-    if prob_true and prob_pred:
+    # Calibration curve (smoothed line preferred)
+    if smoothed_true and smoothed_pred:
+        fig.add_trace(
+            go.Scatter(
+                x=smoothed_pred,
+                y=smoothed_true,
+                mode="lines",
+                name="Smoothed Calibration",
+                line=dict(color=FAIRCAREAI_COLORS["primary"], width=2.5),
+                hovertemplate=(
+                    "Predicted: %{x:.3f}<br>Observed (smoothed): %{y:.3f}<extra></extra>"
+                ),
+            )
+        )
+        if prob_true and prob_pred:
+            fig.add_trace(
+                go.Scatter(
+                    x=prob_pred,
+                    y=prob_true,
+                    mode="markers",
+                    name="Binned Observations",
+                    marker=dict(size=6, color=FAIRCAREAI_COLORS["primary"], opacity=0.6),
+                    hovertemplate=(
+                        "Mean Predicted: %{x:.3f}<br>Observed Rate: %{y:.3f}<extra></extra>"
+                    ),
+                    showlegend=False,
+                )
+            )
+    elif prob_true and prob_pred:
         fig.add_trace(
             go.Scatter(
                 x=prob_pred,
@@ -854,7 +884,7 @@ def plot_performance_summary(
                 ],
                 text=[f"{v:.1%}" for v in metrics.values()],
                 textposition="inside",
-                textfont=dict(color="white", size=10),
+                textfont=dict(color="white", size=TYPOGRAPHY["annotation_size"]),
             ),
             row=2,
             col=1,

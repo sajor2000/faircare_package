@@ -118,6 +118,7 @@ packages = ["src/faircareai"]
 testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_functions = ["test_*"]
+asyncio_default_fixture_loop_scope = "function"
 addopts = [
     "-v",
     "--tb=short",
@@ -129,6 +130,14 @@ markers = [
 ]
 filterwarnings = [
     "ignore::DeprecationWarning",
+    "ignore::statsmodels.tools.sm_exceptions.ConvergenceWarning",
+    "ignore::statsmodels.tools.sm_exceptions.PerfectSeparationWarning",
+    "ignore::statsmodels.tools.sm_exceptions.HessianInversionWarning",
+    "ignore:.*invalid value encountered.*:RuntimeWarning:statsmodels",
+    "ignore:.*overflow encountered in exp.*:RuntimeWarning:statsmodels",
+    "ignore:.*divide by zero encountered in log.*:RuntimeWarning:statsmodels",
+    "ignore:.*Mean of empty slice.*:RuntimeWarning",
+    "ignore:.*invalid value encountered in scalar divide.*:RuntimeWarning",
 ]
 
 # ==============================================================================

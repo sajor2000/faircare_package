@@ -43,6 +43,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Updated disclaimer fonts from 10-13px to 14px minimum
 - Enhanced table font sizes for better readability
 - Refined axis labels for clinical interpretation
+- Deprecated legacy E/O ratio output in favor of O:E (Observed/Expected); removal planned for next major release
+- Increased minimum font sizes across charts and reports for legibility
 
 ### Fixed
 
@@ -79,7 +81,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - AUROC with bootstrap CI
   - AUPRC (Average Precision)
   - Brier Score
-  - Calibration slope, intercept, E/O ratio
+  - Calibration slope, intercept, O:E ratio
   - Decision Curve Analysis
   - Threshold sensitivity analysis
 

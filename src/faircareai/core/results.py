@@ -13,6 +13,7 @@ from dataclasses import dataclass, field
 from datetime import date
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
+from uuid import uuid4
 
 import numpy as np
 import polars as pl
@@ -50,6 +51,10 @@ class AuditResults:
 
     config: FairnessConfig
     threshold: float = 0.5  # Decision threshold used for classification metrics
+
+    # Audit metadata
+    audit_id: str = field(default_factory=lambda: str(uuid4()))
+    run_timestamp: str | None = None
 
     # Results - IN ORDER OF REPORT SECTIONS
     # Section 1: Descriptive Statistics (Table 1)
@@ -506,6 +511,10 @@ class AuditResults:
         path = Path(path)
 
         export_data = {
+            "audit_metadata": {
+                "audit_id": self.audit_id,
+                "run_timestamp": self.run_timestamp,
+            },
             "config": {
                 "model_name": self.config.model_name,
                 "model_version": self.config.model_version,

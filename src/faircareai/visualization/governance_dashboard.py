@@ -19,6 +19,7 @@ from faircareai.visualization.themes import (
     FAIRCAREAI_COLORS,
     GOVERNANCE_DISCLAIMER_SHORT,
     SUBPLOT_SPACING,
+    TYPOGRAPHY,
     apply_faircareai_theme,
     get_contrast_text_color,
 )
@@ -626,7 +627,10 @@ def create_fairness_dashboard(results: "AuditResults") -> go.Figure:
                 marker_color=all_colors,
                 text=[f"{a:.3f}" for a in all_aurocs],
                 textposition="inside",
-                textfont=dict(color=[get_contrast_text_color(c) for c in all_colors], size=10),
+                textfont=dict(
+                    color=[get_contrast_text_color(c) for c in all_colors],
+                    size=TYPOGRAPHY["annotation_size"],
+                ),
                 hovertemplate="%{x}<br>AUROC: %{y:.3f}<extra></extra>",
             ),
             row=1,
@@ -669,7 +673,10 @@ def create_fairness_dashboard(results: "AuditResults") -> go.Figure:
                 marker_color=selection_colors,
                 text=[f"{r:.1%}" for r in selection_rates],
                 textposition="inside",
-                textfont=dict(color=[get_contrast_text_color(c) for c in selection_colors], size=10),
+                textfont=dict(
+                    color=[get_contrast_text_color(c) for c in selection_colors],
+                    size=TYPOGRAPHY["annotation_size"],
+                ),
                 hovertemplate="%{x}<br>Selection Rate: %{y:.1%}<extra></extra>",
             ),
             row=1,
@@ -716,7 +723,10 @@ def create_fairness_dashboard(results: "AuditResults") -> go.Figure:
                 marker_color=fairness_colors,
                 text=[f"{v:.2f}" for v in fairness_values],
                 textposition="inside",
-                textfont=dict(color=[get_contrast_text_color(c) for c in fairness_colors], size=10),
+                textfont=dict(
+                    color=[get_contrast_text_color(c) for c in fairness_colors],
+                    size=TYPOGRAPHY["annotation_size"],
+                ),
                 hovertemplate="%{x}<br>Disparity: %{y:.3f}<extra></extra>",
             ),
             row=2,
@@ -792,19 +802,60 @@ def create_fairness_dashboard(results: "AuditResults") -> go.Figure:
     )
 
     # Add axis titles for each subplot
-    fig.update_xaxes(title_text="Subgroup", tickangle=-40, tickfont=dict(size=10), automargin=True, row=1, col=1)
-    fig.update_yaxes(title_text="AUROC Score", tickfont=dict(size=10), row=1, col=1)
+    fig.update_xaxes(
+        title_text="Subgroup",
+        tickangle=-40,
+        tickfont=dict(size=TYPOGRAPHY["tick_size"]),
+        automargin=True,
+        row=1,
+        col=1,
+    )
+    fig.update_yaxes(
+        title_text="AUROC Score",
+        tickfont=dict(size=TYPOGRAPHY["tick_size"]),
+        row=1,
+        col=1,
+    )
 
-    fig.update_xaxes(title_text="Subgroup", tickangle=-40, tickfont=dict(size=10), automargin=True, row=1, col=2)
-    fig.update_yaxes(title_text="Selection Rate (%)", tickfont=dict(size=10), row=1, col=2)
+    fig.update_xaxes(
+        title_text="Subgroup",
+        tickangle=-40,
+        tickfont=dict(size=TYPOGRAPHY["tick_size"]),
+        automargin=True,
+        row=1,
+        col=2,
+    )
+    fig.update_yaxes(
+        title_text="Selection Rate (%)",
+        tickfont=dict(size=TYPOGRAPHY["tick_size"]),
+        row=1,
+        col=2,
+    )
 
-    fig.update_xaxes(title_text="Fairness Metric", tickangle=-40, tickfont=dict(size=10), automargin=True, row=2, col=1)
-    fig.update_yaxes(title_text="Absolute Disparity", tickfont=dict(size=10), row=2, col=1)
+    fig.update_xaxes(
+        title_text="Fairness Metric",
+        tickangle=-40,
+        tickfont=dict(size=TYPOGRAPHY["tick_size"]),
+        automargin=True,
+        row=2,
+        col=1,
+    )
+    fig.update_yaxes(
+        title_text="Absolute Disparity",
+        tickfont=dict(size=TYPOGRAPHY["tick_size"]),
+        row=2,
+        col=1,
+    )
 
     # Style subplot titles smaller to avoid collisions
-    for annotation in fig['layout']['annotations']:
-        if hasattr(annotation, 'text') and annotation.text in ["AUROC by Subgroup", "Selection Rate by Subgroup", "Fairness Metrics", "Disparity Summary"]:
-            annotation.font = dict(size=11, family="Inter, sans-serif")
+    for annotation in fig["layout"]["annotations"]:
+        if hasattr(annotation, "text") and annotation.text in [
+            "AUROC by Subgroup",
+            "Selection Rate by Subgroup",
+            "Fairness Metrics",
+            "Disparity Summary",
+        ]:
+            annotation.font = dict(size=TYPOGRAPHY["annotation_size"], family="Inter, sans-serif")
     return fig
 
 
@@ -887,7 +938,10 @@ def plot_subgroup_comparison(
                 marker_color=colors,
                 text=[f"{v:.3f}" for v in values],
                 textposition="inside",
-                textfont=dict(color=[get_contrast_text_color(c) for c in colors], size=10),
+                textfont=dict(
+                    color=[get_contrast_text_color(c) for c in colors],
+                    size=TYPOGRAPHY["annotation_size"],
+                ),
                 hovertemplate=f"{attr_name}: %{{x}}<br>{metric_labels.get(metric, metric)}: %{{y:.3f}}<extra></extra>",
             )
         )
@@ -1027,11 +1081,21 @@ def create_governance_overall_figures(results: "AuditResults") -> dict[str, Any]
         )
     )
 
-    # Get calibration data if available
-    cal_data = cal.get("calibration_curve_data", {})
-    if cal_data:
-        x_vals = cal_data.get("predicted", [0.1, 0.3, 0.5, 0.7, 0.9])
-        y_vals = cal_data.get("observed", [0.12, 0.28, 0.52, 0.68, 0.88])
+    # Get calibration curve data if available (prefer smoothed)
+    cal_curve_smoothed = cal.get("calibration_curve_smoothed", {}) or {}
+    smoothed_pred = cal_curve_smoothed.get("prob_pred", [])
+    smoothed_true = cal_curve_smoothed.get("prob_true", [])
+
+    cal_curve = cal.get("calibration_curve", {}) or {}
+    prob_pred = cal_curve.get("prob_pred", [])
+    prob_true = cal_curve.get("prob_true", [])
+
+    if smoothed_pred and smoothed_true:
+        x_vals = smoothed_pred
+        y_vals = smoothed_true
+    elif prob_pred and prob_true:
+        x_vals = prob_pred
+        y_vals = prob_true
     else:
         # Generate approximate calibration line from slope
         slope = cal.get("calibration_slope", 1.0)

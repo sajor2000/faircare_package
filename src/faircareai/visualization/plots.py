@@ -1469,7 +1469,10 @@ def create_equity_dashboard(
                 showlegend=False,
                 text=[f"{d:+.1%}" for d in disparities],
                 textposition="inside",
-                textfont=dict(color=[get_contrast_text_color(c) for c in bar_colors], size=10),
+                textfont=dict(
+                    color=[get_contrast_text_color(c) for c in bar_colors],
+                    size=TYPOGRAPHY["annotation_size"],
+                ),
             ),
             row=2,
             col=2,

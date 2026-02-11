@@ -373,20 +373,43 @@ def _compute_calibration_metrics(
             "n_bins": n_bins,
         }
 
-        # ICI (Integrated Calibration Index) - average absolute calibration error
-        result["ici"] = float(np.mean(np.abs(prob_pred - prob_true)))
+        # Smoothed calibration curve using LOWESS (Van Calster reference)
+        smoothed_pred = np.array([])
+        smoothed_true = np.array([])
+        try:
+            from statsmodels.nonparametric.smoothers_lowess import lowess
 
-        # ECI (E-statistic Calibration Index) - squared calibration error normalized
-        # Per Van Calster: mean((smoothed_observed - predicted)^2) / mean((prevalence - predicted)^2)
-        eci_numer = np.mean((prob_true - prob_pred) ** 2)
-        eci_denom = np.mean((prevalence - prob_pred) ** 2)
+            order = np.argsort(y_prob)
+            prob_sorted = y_prob[order]
+            y_sorted = y_true[order]
+            lowess_result = lowess(y_sorted, prob_sorted, frac=0.75, it=0, return_sorted=True)
+            smoothed_pred = lowess_result[:, 0]
+            smoothed_true = np.clip(lowess_result[:, 1], 0.0, 1.0)
+        except Exception as e:
+            logger.warning(
+                "LOWESS calibration smoothing failed (%s): %s", type(e).__name__, str(e)
+            )
+
+        result["calibration_curve_smoothed"] = {
+            "prob_true": smoothed_true.tolist() if len(smoothed_true) > 0 else [],
+            "prob_pred": smoothed_pred.tolist() if len(smoothed_pred) > 0 else [],
+            "method": "lowess",
+            "frac": 0.75,
+        }
+
+        # ICI/ECI/E_max using smoothed curve when available
+        error_pred = smoothed_pred if len(smoothed_pred) > 0 else prob_pred
+        error_true = smoothed_true if len(smoothed_true) > 0 else prob_true
+
+        result["ici"] = float(np.mean(np.abs(error_true - error_pred)))
+        eci_numer = np.mean((error_true - error_pred) ** 2)
+        eci_denom = np.mean((prevalence - error_pred) ** 2)
         result["eci"] = float(eci_numer / eci_denom) if eci_denom > 0 else 0.0
-
-        # E_max (Maximum Calibration Error)
-        result["e_max"] = float(np.max(np.abs(prob_pred - prob_true)))
+        result["e_max"] = float(np.max(np.abs(error_true - error_pred)))
     except ValueError as e:
         logger.warning("Calibration curve failed: %s", str(e))
         result["calibration_curve"] = None
+        result["calibration_curve_smoothed"] = None
         result["ici"] = None
         result["eci"] = None
         result["e_max"] = None

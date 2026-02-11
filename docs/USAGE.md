@@ -453,6 +453,8 @@ Container for audit results with export and visualization methods.
 | Property | Type | Description |
 |----------|------|-------------|
 | `config` | FairnessConfig | Configuration used |
+| `audit_id` | str | Unique identifier for this audit run |
+| `run_timestamp` | str \| None | ISO timestamp when the audit executed |
 | `descriptive_stats` | dict | Section 1: Cohort summary |
 | `overall_performance` | dict | Section 2: TRIPOD+AI metrics |
 | `subgroup_performance` | dict | Section 3: By-group performance |
@@ -549,6 +551,8 @@ to_html(
 
 Export interactive HTML report.
 
+Reports include an **Audit Trail** section with audit ID, audit run timestamp, report generated time, model/version, and configuration context.
+
 **Parameters:**
 - `path`: Output file path
 - `open_browser`: Open in browser after export
@@ -593,6 +597,8 @@ to_json(path: str | Path) -> Path
 ```
 
 Export metrics as JSON.
+
+JSON includes `audit_metadata` with `audit_id` and `run_timestamp`.
 
 #### Other Methods
 

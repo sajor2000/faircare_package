@@ -108,7 +108,7 @@ Every FairCareAI report includes these sections in order:
 │                                                                             │
 │  SECTION 2: OVERALL MODEL PERFORMANCE (TRIPOD+AI) ◄── BEFORE fairness!      │
 │  ├── 2.1 Discrimination (AUROC, AUPRC with 95% CI, ROC/PR curves)           │
-│  ├── 2.2 Calibration (Brier, slope, intercept, E/O ratio, plot)             │
+│  ├── 2.2 Calibration (Brier, slope, intercept, O:E ratio, plot)             │
 │  ├── 2.3 Classification at Threshold (Sens, Spec, PPV, NPV, F1)             │
 │  │       └── 🎚️ User-set "high risk" threshold with toggle                  │
 │  ├── 2.4 Threshold Sensitivity Analysis (metrics across cutoffs)            │
@@ -2205,10 +2205,10 @@ def compute_calibration_metrics(
     calibration_slope = float(lr.coef_[0][0])
     calibration_intercept = float(lr.intercept_[0])
     
-    # Expected/Observed ratio (E/O)
+    # Observed/Expected ratio (O:E)
     expected = y_prob.sum()
     observed = y_true.sum()
-    eo_ratio = expected / observed if observed > 0 else np.nan
+    oe_ratio = observed / expected if expected > 0 else np.nan
     
     # Integrated Calibration Index (ICI) - mean absolute calibration error
     ici = float(np.mean(np.abs(prob_true - prob_pred)))
@@ -2217,7 +2217,7 @@ def compute_calibration_metrics(
         "brier_score": brier,
         "calibration_slope": calibration_slope,
         "calibration_intercept": calibration_intercept,
-        "eo_ratio": eo_ratio,
+        "oe_ratio": oe_ratio,
         "ici": ici,
         "calibration_curve": {
             "prob_true": prob_true.tolist(),
@@ -2448,7 +2448,7 @@ def compute_decision_curve_analysis(
 │   │ Brier Score           │ 0.089   │ 0.000   │ Good (lower is better)  │   │
 │   │ Calibration Slope     │ 0.94    │ 1.00    │ Slight overfitting      │   │
 │   │ Calibration Intercept │ 0.02    │ 0.00    │ Slight underestimation  │   │
-│   │ E/O Ratio             │ 1.03    │ 1.00    │ Well calibrated         │   │
+│   │ O:E Ratio             │ 1.03    │ 1.00    │ Well calibrated         │   │
 │   └─────────────────────────────────────────────────────────────────────┘   │
 │                                                                             │
 │   [CALIBRATION PLOT: Predicted vs Observed with LOESS smoother]             │
