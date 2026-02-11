@@ -17,11 +17,6 @@ from faircareai.core.constants import (
 )
 
 # Import theming constants
-from faircareai.visualization.themes import (
-    EDITORIAL_COLORS,
-    FAIRCAREAI_BRAND,
-    TYPOGRAPHY,
-)
 
 
 def get_metric_category(metric: str) -> str:

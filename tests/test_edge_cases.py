@@ -232,7 +232,7 @@ class TestCalibrationEdgeCases:
         assert "calibration_slope" in result
         # Calibration slope can vary significantly with random data
         # Just ensure it's a valid number and brier score is reasonable
-        assert isinstance(result["calibration_slope"], (int, float))
+        assert isinstance(result["calibration_slope"], int | float)
         assert 0 <= result["brier_score"] <= 1
 
     def test_calibration_constant_predictions(self) -> None:

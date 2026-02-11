@@ -37,8 +37,8 @@ import polars as pl
 from sklearn.calibration import calibration_curve
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import (
-    average_precision_score,
     auc,
+    average_precision_score,
     brier_score_loss,
     confusion_matrix,
     f1_score,

@@ -1148,13 +1148,13 @@ def _generate_performance_section(results: "AuditResults") -> str:
     try:
         from faircareai.visualization.governance_dashboard import (
             create_governance_overall_figures,
-            create_governance_roc_curve,
             create_governance_probability_distribution,
+            create_governance_roc_curve,
         )
 
         # EXISTING: 4 gauge figures
         figures = create_governance_overall_figures(results)
-        
+
         # Extract explanations dict
         explanations = figures.pop("_explanations", {})
         explanation_map = {
@@ -1163,7 +1163,7 @@ def _generate_performance_section(results: "AuditResults") -> str:
             "Brier Score": explanations.get("brier", ""),
             "Classification": explanations.get("classification", ""),
         }
-        
+
         chart_parts = ['<div class="chart-grid" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; margin-top: 20px;">']
         for title, fig in figures.items():
             if fig is not None and hasattr(fig, 'to_html'):
@@ -1747,7 +1747,9 @@ def _generate_report_html(
                 """
             except (ValueError, TypeError, KeyError) as e:
                 logger.warning("Chart generation failed: %s", e)
-                charts_html = f'<p class="chart-placeholder">Charts could not be generated: {html.escape(str(e))}</p>'
+                charts_html = (
+                    f'<p class="chart-placeholder">Charts could not be generated: {html.escape(str(e))}</p>'
+                )
             except ImportError as e:
                 logger.error("Chart library not available: %s", e)
                 charts_html = '<p class="chart-placeholder">Chart library missing. Install with: pip install \'faircareai[viz]\'</p>'
@@ -1774,7 +1776,7 @@ def _generate_report_html(
         title="Audit Trail",
     )
 
-    html = f"""<!DOCTYPE html>
+    html_content = f"""<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -1933,17 +1935,17 @@ def _generate_report_html(
             margin: 30px 0;
         }}
 
-	        .charts-section h3 {{
-	            font-size: 20px;
-	            margin-top: 30px;
-	            margin-bottom: 15px;
-	            color: #2c5282;
-	        }}
-	    </style>
-	</head>
-	<body>
-	    <header class="header">
-	        <h1>Equity Audit Report</h1>
+        .charts-section h3 {{
+            font-size: 20px;
+            margin-top: 30px;
+            margin-bottom: 15px;
+            color: #2c5282;
+        }}
+    </style>
+</head>
+<body>
+    <header class="header">
+        <h1>Equity Audit Report</h1>
         <p class="metadata">
             Model: <strong>{summary.model_name}</strong><br>
             Audit Date: {summary.audit_date}<br>
@@ -1992,7 +1994,7 @@ def _generate_report_html(
 </body>
 </html>"""
 
-    return html
+    return html_content
 
 
 def _get_print_css() -> str:
@@ -2038,6 +2040,8 @@ def _get_print_css() -> str:
 
 def _add_title_slide(prs: Any, summary: AuditSummary, logo_path: str | Path | None = None) -> None:
     """Add title slide to presentation with publication-ready typography."""
+    from contextlib import suppress
+
     from pptx.util import Inches, Pt
 
     slide_layout = prs.slide_layouts[6]  # Blank layout
@@ -2066,10 +2070,8 @@ def _add_title_slide(prs: Any, summary: AuditSummary, logo_path: str | Path | No
     p.font.size = Pt(TYPOGRAPHY["ppt_body_size"])  # 24pt
 
     if logo_path:
-        try:
+        with suppress(Exception):
             _add_logo(slide, logo_path)
-        except Exception:
-            pass
 
 
 def _add_logo(slide: Any, logo_path: str | Path) -> None:
@@ -2093,6 +2095,18 @@ def _add_footer(slide: Any, footer_text: str) -> None:
     p.text = footer_text
     p.font.size = Pt(10)
     p.alignment = PP_ALIGN.RIGHT
+
+
+def _add_slide_title(slide: Any, title: str) -> None:
+    """Add a slide title with consistent typography."""
+    from pptx.util import Inches, Pt
+
+    title_box = slide.shapes.add_textbox(Inches(0.5), Inches(0.3), Inches(12), Inches(0.6))
+    tf = title_box.text_frame
+    p = tf.paragraphs[0]
+    p.text = title
+    p.font.size = Pt(TYPOGRAPHY["headline_size"])
+    p.font.bold = True
 
 
 def _add_summary_slide(prs: Any, summary: AuditSummary) -> None:
@@ -2287,13 +2301,14 @@ def _add_vancalster_slide(prs: Any, results: "AuditResults") -> None:
 def _add_single_image_slide(prs: Any, title: str, fig: Any) -> None:
     """Add a single chart slide."""
     from io import BytesIO
+
     from pptx.util import Inches
 
     from faircareai.reports.figure_exports import render_png_bytes
 
     slide_layout = prs.slide_layouts[6]
     slide = prs.slides.add_slide(slide_layout)
-    _add_title(slide, title)
+    _add_slide_title(slide, title)
     width_in = 12.3
     height_in = 5.9
     png = render_png_bytes(
@@ -2315,13 +2330,14 @@ def _add_single_image_slide(prs: Any, title: str, fig: Any) -> None:
 def _add_grid_slide(prs: Any, title: str, figs: list[Any]) -> None:
     """Add a 2x2 grid of charts."""
     from io import BytesIO
+
     from pptx.util import Inches
 
     from faircareai.reports.figure_exports import render_png_bytes
 
     slide_layout = prs.slide_layouts[6]
     slide = prs.slides.add_slide(slide_layout)
-    _add_title(slide, title)
+    _add_slide_title(slide, title)
 
     left = Inches(0.5)
     top = Inches(1.1)
@@ -2347,94 +2363,6 @@ def _add_grid_slide(prs: Any, title: str, figs: list[Any]) -> None:
         )
         image_stream = BytesIO(png)
         slide.shapes.add_picture(image_stream, x, y, width=cell_w, height=cell_h)
-    """Add chart slides using governance figures."""
-    from io import BytesIO
-    from pptx.util import Inches, Pt
-
-    from faircareai.reports.figure_exports import render_png_bytes
-    from faircareai.visualization.governance_dashboard import (
-        create_governance_overall_figures,
-        create_governance_subgroup_figures,
-    )
-
-    def _add_title(slide: Any, title: str) -> None:
-        title_box = slide.shapes.add_textbox(Inches(0.5), Inches(0.3), Inches(12), Inches(0.6))
-        tf = title_box.text_frame
-        p = tf.paragraphs[0]
-        p.text = title
-        p.font.size = Pt(TYPOGRAPHY["headline_size"])
-        p.font.bold = True
-
-    def _add_single_image_slide(title: str, fig: Any) -> None:
-        slide_layout = prs.slide_layouts[6]
-        slide = prs.slides.add_slide(slide_layout)
-        _add_title(slide, title)
-        width_in = 12.3
-        height_in = 5.9
-        png = render_png_bytes(
-            fig,
-            scale=2,
-            width=int(width_in * 150),
-            height=int(height_in * 150),
-        )
-        image_stream = BytesIO(png)
-        slide.shapes.add_picture(
-            image_stream,
-            Inches(0.5),
-            Inches(1.1),
-            width=Inches(width_in),
-            height=Inches(height_in),
-        )
-
-    def _add_grid_slide(title: str, figs: list[Any]) -> None:
-        slide_layout = prs.slide_layouts[6]
-        slide = prs.slides.add_slide(slide_layout)
-        _add_title(slide, title)
-
-        left = Inches(0.5)
-        top = Inches(1.1)
-        gutter = Inches(0.3)
-        cell_w_in = 6.0
-        cell_h_in = 2.85
-        cell_w = Inches(cell_w_in)
-        cell_h = Inches(cell_h_in)
-
-        positions = [
-            (left, top),
-            (left + cell_w + gutter, top),
-            (left, top + cell_h + gutter),
-            (left + cell_w + gutter, top + cell_h + gutter),
-        ]
-
-        for fig, (x, y) in zip(figs, positions, strict=False):
-            png = render_png_bytes(
-                fig,
-                scale=2,
-                width=int(cell_w_in * 150),
-                height=int(cell_h_in * 150),
-            )
-            image_stream = BytesIO(png)
-            slide.shapes.add_picture(image_stream, x, y, width=cell_w, height=cell_h)
-
-    # Executive summary figure
-    _add_single_image_slide("Executive Summary", results.plot_executive_summary())
-
-    # Overall performance (4 charts)
-    overall = create_governance_overall_figures(results)
-    overall_figs = [fig for key, fig in overall.items() if key != "_explanations"]
-    if len(overall_figs) >= 4:
-        _add_grid_slide("Overall Performance", overall_figs[:4])
-    elif overall_figs:
-        _add_single_image_slide("Overall Performance", overall_figs[0])
-
-    # Subgroup fairness slides (4 charts per attribute)
-    subgroup_figs = create_governance_subgroup_figures(results)
-    for attr, fig_map in subgroup_figs.items():
-        figs = list(fig_map.values())
-        if len(figs) >= 4:
-            _add_grid_slide(f"Fairness by {attr}", figs[:4])
-        elif figs:
-            _add_single_image_slide(f"Fairness by {attr}", figs[0])
 
 
 # === Alias for PPTX generation ===

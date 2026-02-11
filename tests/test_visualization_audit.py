@@ -469,9 +469,9 @@ class TestAltairStaticModule:
 
         chart = create_forest_plot_static(metrics_df, metric="tpr")
         assert chart is not None, "create_forest_plot_static: Chart is None"
-        assert isinstance(chart, (alt.Chart, alt.LayerChart, alt.HConcatChart, alt.VConcatChart)), (
-            "create_forest_plot_static: Not an Altair chart"
-        )
+        assert isinstance(
+            chart, alt.Chart | alt.LayerChart | alt.HConcatChart | alt.VConcatChart
+        ), "create_forest_plot_static: Not an Altair chart"
 
     def test_create_icon_array(self):
         """Test icon array - SVG visualization for impact."""

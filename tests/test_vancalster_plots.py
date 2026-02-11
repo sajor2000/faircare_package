@@ -14,7 +14,6 @@ Tests cover:
 import numpy as np
 from plotly.graph_objects import Figure
 
-from faircareai.visualization.themes import FAIRCAREAI_BRAND
 from faircareai.visualization.utils import add_source_annotation
 from faircareai.visualization.vancalster_plots import (
     _generate_auroc_forest_alt_text,

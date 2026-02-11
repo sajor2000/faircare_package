@@ -16,11 +16,6 @@ from sklearn.calibration import calibration_curve
 from sklearn.metrics import confusion_matrix, roc_auc_score
 
 from faircareai.core.bootstrap import bootstrap_auroc
-from faircareai.metrics.group_utils import (
-    determine_reference_group,
-    filter_to_group,
-    get_unique_groups,
-)
 from faircareai.core.constants import (
     AUROC_DIFF_MODERATE,
     AUROC_DIFF_NEGLIGIBLE,
@@ -43,6 +38,11 @@ from faircareai.core.constants import (
 from faircareai.core.logging import get_logger
 from faircareai.core.types import DisparityIndexResult, FairnessResult
 from faircareai.core.validation import safe_divide
+from faircareai.metrics.group_utils import (
+    determine_reference_group,
+    filter_to_group,
+    get_unique_groups,
+)
 
 logger = get_logger(__name__)
 

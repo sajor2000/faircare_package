@@ -30,7 +30,6 @@ from faircareai.core.config import (
 )
 from faircareai.visualization.themes import (
     FAIRCAREAI_COLORS,
-    GOVERNANCE_DISCLAIMER_SHORT,
     LEGEND_POSITIONS,
     TYPOGRAPHY,
     apply_faircareai_theme,

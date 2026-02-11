@@ -6,9 +6,9 @@ deterministic, auditable analyses in clinical contexts.
 
 from __future__ import annotations
 
+import os
 import platform
 import sys
-import os
 from importlib import metadata
 
 

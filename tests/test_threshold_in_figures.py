@@ -165,15 +165,14 @@ class TestThresholdInFigures:
             for title, fig in figures.items():
                 if "Classification" in title and fig is not None:
                     # Check title contains custom threshold
-                    if fig.layout.title is not None:
-                        title_text = fig.layout.title.text
-                        if title_text and "Threshold" in title_text:
-                            # Should contain 0.41, not 0.5
-                            assert "0.41" in title_text or "0.414" in title_text
-                            # Make sure it's not showing default
-                            if "0.5" in title_text:
-                                # Allow 0.5X but not exactly 0.50 or 0.5
-                                assert "0.50" not in title_text
+                    title_text = fig.layout.title.text if fig.layout.title is not None else None
+                    if title_text and "Threshold" in title_text:
+                        # Should contain 0.41, not 0.5
+                        assert "0.41" in title_text or "0.414" in title_text
+                        # Make sure it's not showing default
+                        if "0.5" in title_text:
+                            # Allow 0.5X but not exactly 0.50 or 0.5
+                            assert "0.50" not in title_text
 
     def test_threshold_in_audit_summary(
         self, sample_data_with_predictions: pl.DataFrame, basic_config: FairnessConfig

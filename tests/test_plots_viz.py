@@ -40,7 +40,7 @@ from faircareai.visualization.plots import (
     generate_heatmap_alt_text,
     generate_roc_alt_text,
 )
-from faircareai.visualization.themes import FAIRCAREAI_BRAND, SEMANTIC_COLORS
+from faircareai.visualization.themes import SEMANTIC_COLORS
 
 
 @pytest.fixture

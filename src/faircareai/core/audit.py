@@ -26,8 +26,8 @@ from faircareai.core.exceptions import (
     DataValidationError,
 )
 from faircareai.core.logging import get_logger
-from faircareai.core.results import AuditResults
 from faircareai.core.reproducibility import build_reproducibility_bundle
+from faircareai.core.results import AuditResults
 from faircareai.data.sensitive_attrs import (
     display_suggestions,
     get_reference_group,

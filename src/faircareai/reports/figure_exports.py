@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import io
 import re
 import zipfile
 from pathlib import Path
@@ -58,13 +57,13 @@ def collect_governance_figures(results: Any) -> dict[str, Any]:
 
 def collect_data_scientist_figures(results: Any, include_optional: bool = False) -> dict[str, Any]:
     """Collect data scientist persona figures for export."""
+    from faircareai.visualization.governance_dashboard import create_fairness_dashboard
     from faircareai.visualization.performance_charts import (
         plot_calibration_curve,
         plot_decision_curve,
         plot_discrimination_curves,
         plot_threshold_analysis,
     )
-    from faircareai.visualization.governance_dashboard import create_fairness_dashboard
 
     figures: dict[str, Any] = {}
     figures["Discrimination Curves"] = plot_discrimination_curves(

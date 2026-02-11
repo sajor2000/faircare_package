@@ -14,10 +14,10 @@ import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
+from faircareai.core.config import FairnessMetric
 from faircareai.visualization.themes import (
     COLORSCALES,
     FAIRCAREAI_COLORS,
-    GOVERNANCE_DISCLAIMER_SHORT,
     SUBPLOT_SPACING,
     TYPOGRAPHY,
     apply_faircareai_theme,
@@ -1033,7 +1033,6 @@ def create_governance_overall_figures(results: "AuditResults") -> dict[str, Any]
 
     # 1. AUROC Gauge
     auroc = disc.get("auroc", 0)
-    auroc_status = "PASS" if auroc >= 0.7 else "REVIEW"
     auroc_color = FAIRCAREAI_COLORS["success"] if auroc >= 0.7 else FAIRCAREAI_COLORS["error"]
 
     fig_auroc = go.Figure(
@@ -1154,7 +1153,6 @@ def create_governance_overall_figures(results: "AuditResults") -> dict[str, Any]
 
     # 3. Brier Score Gauge
     brier = cal.get("brier_score", 0.25)
-    brier_status = "PASS" if brier < 0.15 else "REVIEW" if brier < 0.25 else "FLAG"
     brier_color = (
         FAIRCAREAI_COLORS["success"]
         if brier < 0.15
@@ -1244,7 +1242,7 @@ def create_governance_overall_figures(results: "AuditResults") -> dict[str, Any]
 
 def create_governance_subgroup_figures(
     results: "AuditResults",
-    primary_metric: "FairnessMetric | None" = None,
+    primary_metric: FairnessMetric | None = None,
 ) -> dict[str, dict[str, go.Figure]]:
     """Create subgroup performance figures for governance report.
 
@@ -1265,21 +1263,10 @@ def create_governance_subgroup_figures(
     Returns:
         Dict mapping attribute name to dict of figure title -> Plotly Figure.
     """
-    from faircareai.core.config import FairnessMetric
-
     # Get primary metric from results if not provided
     if primary_metric is None:
         primary_metric = getattr(results.config, "primary_fairness_metric", None)
 
-    # Map fairness metrics to chart keys for highlighting
-    metric_to_chart = {
-        FairnessMetric.DEMOGRAPHIC_PARITY: "Selection Rate by Subgroup",
-        FairnessMetric.EQUAL_OPPORTUNITY: "Sensitivity by Subgroup",
-        FairnessMetric.EQUALIZED_ODDS: "Sensitivity by Subgroup",  # TPR is part of EO
-        FairnessMetric.PREDICTIVE_PARITY: None,  # PPV not shown in standard charts
-        FairnessMetric.CALIBRATION: None,  # Calibration not shown in standard charts
-    }
-    primary_chart_key = metric_to_chart.get(primary_metric) if primary_metric else None
     # Plain language explanations for Van Calster 4 visualizations
     SUBGROUP_EXPLANATIONS = {
         "auroc": (
