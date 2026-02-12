@@ -5,7 +5,10 @@ from __future__ import annotations
 from pathlib import Path
 
 from faircareai.core.results import AuditResults
-from faircareai.reports.chai_model_card import build_chai_model_card
+from faircareai.reports.chai_model_card import (
+    build_chai_model_card_metadata,
+    build_chai_model_card_payload,
+)
 
 
 def _format_value(value: object) -> str:
@@ -28,147 +31,154 @@ def _section_lines(title: str, rows: list[tuple[str, object]]) -> list[str]:
     return lines
 
 
+def _title_from_camel(text: str) -> str:
+    if "_" in text:
+        return text.replace("_", " ").title()
+    spaced = []
+    for idx, char in enumerate(text):
+        if idx > 0 and char.isupper() and text[idx - 1].islower():
+            spaced.append(" ")
+        spaced.append(char)
+    return "".join(spaced).title()
+
+
 def generate_model_card_markdown(results: AuditResults, path: str | Path) -> Path:
     """Generate a CHAI Applied Model Card-aligned Markdown report."""
     path = Path(path)
-    card = build_chai_model_card(results)
+    payload = build_chai_model_card_payload(results)
+    metadata = build_chai_model_card_metadata(results)
 
     lines: list[str] = ["# CHAI Applied Model Card (FairCareAI)", ""]
 
     lines += _section_lines(
         "Schema Alignment",
         [
-            ("Schema version", card.get("schema_version")),
-            ("Schema URL", card.get("schema_url")),
-            ("Template URL", card.get("template_url")),
-            ("Generated at", card.get("generated_at")),
-            ("Audit ID", card.get("audit_id")),
-            ("Run timestamp", card.get("run_timestamp")),
+            ("Schema version", metadata.get("schema_version")),
+            ("Schema URL", metadata.get("schema_url")),
+            ("Template URL", metadata.get("template_url")),
+            ("Generated at", metadata.get("generated_at")),
+            ("Audit ID", metadata.get("audit_id")),
+            ("Run timestamp", metadata.get("run_timestamp")),
         ],
     )
 
-    model_overview = card.get("model_overview", {})
+    basic = payload.get("BasicInfo", {})
+    release = payload.get("ReleaseInfo", {})
+    summary = payload.get("ModelSummary", {})
     lines += _section_lines(
-        "Model Overview",
+        "Basic Info",
         [
-            ("Name", model_overview.get("name")),
-            ("Developer", model_overview.get("developer")),
-            ("Inquiries or report issue", model_overview.get("inquiries_or_report_issue")),
-            ("Release stage", model_overview.get("release_stage")),
-            ("Release date", model_overview.get("release_date")),
-            ("Version", model_overview.get("version")),
-            ("Global availability", model_overview.get("global_availability")),
-            ("Regulatory approval", model_overview.get("regulatory_approval")),
-            ("Summary", model_overview.get("summary")),
-            ("Keywords", model_overview.get("keywords")),
+            ("Model name", basic.get("ModelName")),
+            ("Model developer", basic.get("ModelDeveloper")),
+            ("Developer contact", basic.get("DeveloperContact")),
         ],
     )
 
-    uses = card.get("uses_and_directions", {})
+    lines += _section_lines(
+        "Release Info",
+        [
+            ("Release stage", release.get("ReleaseStage")),
+            ("Release date", release.get("ReleaseDate")),
+            ("Release version", release.get("ReleaseVersion")),
+            ("Global availability", release.get("GlobalAvailability")),
+            ("Regulatory approval", release.get("RegulatoryApproval")),
+        ],
+    )
+
+    lines += _section_lines(
+        "Model Summary",
+        [
+            ("Summary", summary.get("Summary")),
+            ("Keywords", summary.get("Keywords")),
+        ],
+    )
+
+    uses = payload.get("UsesAndDirections", {})
     lines += _section_lines(
         "Uses and Directions",
         [
-            ("Intended use and workflow", uses.get("intended_use_and_workflow")),
-            ("Primary intended users", uses.get("primary_intended_users")),
-            ("How to use", uses.get("how_to_use")),
-            ("Targeted patient population", uses.get("targeted_patient_population")),
-            ("Cautioned out-of-scope settings", uses.get("cautioned_out_of_scope_settings")),
+            ("Intended use and workflow", uses.get("IntendedUseAndWorkflow")),
+            ("Primary intended users", uses.get("PrimaryIntendedUsers")),
+            ("How to use", uses.get("HowToUse")),
+            ("Targeted patient population", uses.get("TargetedPatientPopulation")),
+            ("Cautioned out-of-scope settings", uses.get("CautionedOutOfScopeSettings")),
         ],
     )
 
-    warnings = card.get("warnings", {})
+    warnings = payload.get("Warnings", {})
     lines += _section_lines(
         "Warnings",
         [
-            ("Known risks and limitations", warnings.get("known_risks_and_limitations")),
-            (
-                "Known biases or ethical considerations",
-                warnings.get("known_biases_or_ethical_considerations"),
-            ),
-            ("Clinical risk level", warnings.get("clinical_risk_level")),
+            ("Known risks and limitations", warnings.get("KnownRisksAndLimitations")),
+            ("Known biases or ethical considerations", warnings.get("KnownBiasesOrEthicalConsiderations")),
+            ("Clinical risk level", warnings.get("ClinicalRiskLevel")),
         ],
     )
 
-    trust = card.get("trust_ingredients", {})
-    ai_facts = trust.get("ai_system_facts", {})
+    trust = payload.get("TrustIngredients", {})
+    ai_facts = trust.get("AISystemFacts", {})
     lines += _section_lines(
         "Trust Ingredients",
         [
-            ("Outcomes and outputs", ai_facts.get("outcomes_and_outputs")),
-            ("Model type", ai_facts.get("model_type")),
-            ("Foundation models used", ai_facts.get("foundation_models_used")),
-            ("Input data source", ai_facts.get("input_data_source")),
-            ("Output/Input data type", ai_facts.get("output_input_data_type")),
-            ("Development data characterization", ai_facts.get("development_data_characterization")),
-            ("Bias mitigation approaches", ai_facts.get("bias_mitigation_approaches")),
-            ("Ongoing maintenance", ai_facts.get("ongoing_maintenance")),
-            ("Security and compliance environment", ai_facts.get("security_and_compliance_environment")),
-            (
-                "Transparency mechanisms",
-                ai_facts.get("transparency_intelligibility_accountability_mechanisms"),
-            ),
+            ("Outcomes and outputs", ai_facts.get("OutcomesAndOutputs")),
+            ("Model type", ai_facts.get("ModelType")),
+            ("Foundation models", ai_facts.get("FoundationModels")),
+            ("Input data source", ai_facts.get("InputDataSource")),
+            ("Output and input data types", ai_facts.get("OutputAndInputDataTypes")),
+            ("Development data characterization", ai_facts.get("DevelopmentDataCharacterization")),
+            ("Bias mitigation approaches", ai_facts.get("BiasMitigationApproaches")),
+            ("Ongoing maintenance", ai_facts.get("OngoingMaintenance")),
+            ("Security", ai_facts.get("Security")),
+            ("Transparency", ai_facts.get("Transparency")),
         ],
     )
 
-    transparency = card.get("transparency_information", {})
+    transparency = trust.get("TransparencyInformation", {})
     lines += _section_lines(
         "Transparency Information",
         [
-            (
-                "Funding source of technical implementation",
-                transparency.get("funding_source_of_technical_implementation"),
-            ),
-            ("Third-party information", transparency.get("third_party_information")),
-            (
-                "Stakeholders consulted during design",
-                transparency.get("stakeholders_consulted_during_design"),
-            ),
+            ("Funding source", transparency.get("FundingSource")),
+            ("Third-party information", transparency.get("ThirdPartyInformation")),
+            ("Stakeholders consulted", transparency.get("StakeholdersConsulted")),
         ],
     )
 
-    key_metrics = card.get("key_metrics", {})
+    key_metrics = payload.get("KeyMetrics", {})
     lines.append("## Key Metrics")
     for section, metrics in key_metrics.items():
-        lines.append(f"### {section.replace('_', ' ').title()}")
+        lines.append(f"### {_title_from_camel(section)}")
         if isinstance(metrics, dict):
-            lines.append(f"- **Goal of metrics**: {_format_value(metrics.get('goal_of_metrics'))}")
-            lines.append(f"- **Result**: {_format_value(metrics.get('result'))}")
-            lines.append(f"- **Interpretation**: {_format_value(metrics.get('interpretation'))}")
-            lines.append(f"- **Test type**: {_format_value(metrics.get('test_type'))}")
+            lines.append(f"- **Metric goal**: {_format_value(metrics.get('MetricGoal'))}")
+            lines.append(f"- **Result**: {_format_value(metrics.get('Result'))}")
+            lines.append(f"- **Interpretation**: {_format_value(metrics.get('Interpretation'))}")
+            lines.append(f"- **Test type**: {_format_value(metrics.get('TestType'))}")
             lines.append(
-                f"- **Testing data description**: {_format_value(metrics.get('testing_data_description'))}"
+                f"- **Testing data description**: {_format_value(metrics.get('TestingDataDescription'))}"
             )
             lines.append(
                 "- **Validation process and justification**: "
-                f"{_format_value(metrics.get('validation_process_and_justification'))}"
+                f"{_format_value(metrics.get('ValidationProcessAndJustification'))}"
             )
         else:
             lines.append(f"- {_format_value(metrics)}")
         lines.append("")
 
-    resources = card.get("resources", {})
+    resources = payload.get("Resources", {})
     lines += _section_lines(
         "Resources",
         [
-            ("Evaluation references", resources.get("evaluation_references")),
-            ("Clinical trials", resources.get("clinical_trials")),
-            ("Peer reviewed publications", resources.get("peer_reviewed_publications")),
-            ("Reimbursement status", resources.get("reimbursement_status")),
-            ("Patient consent or disclosure", resources.get("patient_consent_or_disclosure")),
-            (
-                "Stakeholders consulted during design",
-                resources.get("stakeholders_consulted_during_design"),
-            ),
+            ("Evaluation references", resources.get("EvaluationReferences")),
+            ("Clinical trial", resources.get("ClinicalTrial")),
+            ("Peer reviewed publications", resources.get("PeerReviewedPublications")),
+            ("Reimbursement status", resources.get("ReimbursementStatus")),
+            ("Patient consent or disclosure", resources.get("PatientConsentOrDisclosure")),
         ],
     )
 
-    governance = card.get("governance", {})
     lines += _section_lines(
-        "Governance",
+        "Bibliography",
         [
-            ("Status", governance.get("status")),
-            ("Advisory", governance.get("advisory")),
-            ("Review notes", governance.get("review_notes")),
+            ("Bibliography", payload.get("Bibliography")),
         ],
     )
 

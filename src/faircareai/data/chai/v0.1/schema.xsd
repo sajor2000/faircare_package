@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           targetNamespace="https://mc.chai.org/v0.1/schema.xsd"
+           xmlns="https://mc.chai.org/v0.1/schema.xsd"
+           elementFormDefault="qualified">
+
+    <xs:element name="AppliedModelCard" type="AppliedModelCardType"/>
+
+    <xs:complexType name="AppliedModelCardType">
+        <xs:sequence>
+            <xs:element name="BasicInfo" type="BasicInfoType"/>
+            <xs:element name="ReleaseInfo" type="ReleaseInfoType"/>
+            <xs:element name="ModelSummary" type="ModelSummaryType"/>
+            <xs:element name="UsesAndDirections" type="UsesAndDirectionsType"/>
+            <xs:element name="Warnings" type="WarningsType"/>
+            <xs:element name="TrustIngredients" type="TrustIngredientsType"/>
+            <xs:element name="KeyMetrics" type="KeyMetricsType"/>
+            <xs:element name="Resources" type="ResourcesType"/>
+            <xs:element name="Bibliography" type="xs:string"/>
+        </xs:sequence>
+    </xs:complexType>
+
+    <xs:complexType name="BasicInfoType">
+        <xs:sequence>
+            <xs:element name="ModelName" type="xs:string"/>
+            <xs:element name="ModelDeveloper" type="xs:string"/>
+            <xs:element name="DeveloperContact" type="xs:string"/>
+        </xs:sequence>
+    </xs:complexType>
+
+    <xs:complexType name="ReleaseInfoType">
+        <xs:sequence>
+            <xs:element name="ReleaseStage" type="xs:string"/>
+            <xs:element name="ReleaseDate" type="xs:string"/>
+            <xs:element name="ReleaseVersion" type="xs:string"/>
+            <xs:element name="GlobalAvailability" type="xs:string"/>
+            <xs:element name="RegulatoryApproval" type="xs:string" minOccurs="0"/>
+        </xs:sequence>
+    </xs:complexType>
+
+    <xs:complexType name="ModelSummaryType">
+        <xs:sequence>
+            <xs:element name="Summary" type="xs:string"/>
+            <xs:element name="Keywords" type="KeywordsType"/>
+        </xs:sequence>
+    </xs:complexType>
+
+    <xs:complexType name="KeywordsType">
+        <xs:sequence>
+            <xs:element name="Keyword" type="xs:string" minOccurs="0" maxOccurs="unbounded"/>
+        </xs:sequence>
+    </xs:complexType>
+
+    <xs:complexType name="UsesAndDirectionsType">
+        <xs:sequence>
+            <xs:element name="IntendedUseAndWorkflow" type="xs:string"/>
+            <xs:element name="PrimaryIntendedUsers" type="xs:string"/>
+            <xs:element name="HowToUse" type="xs:string"/>
+            <xs:element name="TargetedPatientPopulation" type="xs:string"/>
+            <xs:element name="CautionedOutOfScopeSettings" type="xs:string"/>
+        </xs:sequence>
+    </xs:complexType>
+
+    <xs:complexType name="WarningsType">
+        <xs:sequence>
+            <xs:element name="KnownRisksAndLimitations" type="xs:string"/>
+            <xs:element name="KnownBiasesOrEthicalConsiderations" type="xs:string"/>
+            <xs:element name="ClinicalRiskLevel" type="xs:string"/>
+        </xs:sequence>
+    </xs:complexType>
+
+    <xs:complexType name="TrustIngredientsType">
+        <xs:sequence>
+            <xs:element name="AISystemFacts" type="AISystemFactsType"/>
+            <xs:element name="TransparencyInformation" type="TransparencyInformationType"/>
+        </xs:sequence>
+    </xs:complexType>
+
+    <xs:complexType name="AISystemFactsType">
+        <xs:sequence>
+            <xs:element name="OutcomesAndOutputs" type="xs:string"/>
+            <xs:element name="ModelType" type="xs:string"/>
+            <xs:element name="FoundationModels" type="xs:string" minOccurs="0"/>
+            <xs:element name="InputDataSource" type="xs:string"/>
+            <xs:element name="OutputAndInputDataTypes" type="xs:string"/>
+            <xs:element name="DevelopmentDataCharacterization" type="xs:string"/>
+            <xs:element name="BiasMitigationApproaches" type="xs:string"/>
+            <xs:element name="OngoingMaintenance" type="xs:string"/>
+            <xs:element name="Security" type="xs:string" minOccurs="0"/>
+            <xs:element name="Transparency" type="xs:string" minOccurs="0"/>
+        </xs:sequence>
+    </xs:complexType>
+
+    <xs:complexType name="TransparencyInformationType">
+        <xs:sequence>
+            <xs:element name="FundingSource" type="xs:string"/>
+            <xs:element name="ThirdPartyInformation" type="xs:string" minOccurs="0"/>
+            <xs:element name="StakeholdersConsulted" type="xs:string"/>
+        </xs:sequence>
+    </xs:complexType>
+
+    <xs:complexType name="KeyMetricsType">
+        <xs:sequence>
+            <xs:element name="UsefulnessUsabilityEfficacy" type="KeyMetricType"/>
+            <xs:element name="FairnessEquity" type="KeyMetricType"/>
+            <xs:element name="SafetyReliability" type="KeyMetricType"/>
+        </xs:sequence>
+    </xs:complexType>
+
+    <xs:complexType name="KeyMetricType">
+        <xs:sequence>
+            <xs:element name="MetricGoal" type="xs:string"/>
+            <xs:element name="Result" type="xs:string"/>
+            <xs:element name="Interpretation" type="xs:string"/>
+            <xs:element name="TestType" type="xs:string"/>
+            <xs:element name="TestingDataDescription" type="xs:string"/>
+            <xs:element name="ValidationProcessAndJustification" type="xs:string"/>
+        </xs:sequence>
+    </xs:complexType>
+
+    <xs:complexType name="ResourcesType">
+        <xs:sequence>
+            <xs:element name="EvaluationReferences" type="xs:string" minOccurs="0"/>
+            <xs:element name="ClinicalTrial" type="xs:string" minOccurs="0"/>
+            <xs:element name="PeerReviewedPublications" type="xs:string"/>
+            <xs:element name="ReimbursementStatus" type="xs:string" minOccurs="0"/>
+            <xs:element name="PatientConsentOrDisclosure" type="xs:string"/>
+        </xs:sequence>
+    </xs:complexType>
+
+</xs:schema>

@@ -18,6 +18,12 @@ pip install faircareai
 pip install "faircareai[export]"
 ```
 
+### With Compliance Validation (CHAI XML Schema)
+
+```bash
+pip install "faircareai[compliance]"
+```
+
 ### Development Installation
 
 ```bash
@@ -65,7 +71,8 @@ audit.config = FairnessConfig(
 results = audit.run()
 results.to_html("report.html")
 results.to_model_card("model_card.md")
-results.to_chai_model_card("chai_model_card.json")
+results.to_chai_model_card("chai_model_card.xml")
+results.to_chai_model_card_json("chai_model_card.json")
 results.to_raic_checkpoint_1("raic_checkpoint_1.json")
 results.to_reproducibility_bundle("reproducibility.json")
 ```
@@ -125,7 +132,8 @@ results.to_pptx("presentation.pptx")
 
 # Model card + reproducibility bundle
 results.to_model_card("model_card.md")
-results.to_chai_model_card("chai_model_card.json")
+results.to_chai_model_card("chai_model_card.xml")
+results.to_chai_model_card_json("chai_model_card.json")
 results.to_raic_checkpoint_1("raic_checkpoint_1.json")
 results.to_reproducibility_bundle("reproducibility.json")
 
@@ -636,7 +644,15 @@ Export a CHAI Applied Model Card-aligned Markdown report.
 to_chai_model_card(path: str | Path) -> Path
 ```
 
-Export a CHAI Applied Model Card-aligned JSON file.
+Export a CHAI Applied Model Card-aligned XML file (v0.1 schema).
+
+##### to_chai_model_card_json()
+
+```python
+to_chai_model_card_json(path: str | Path) -> Path
+```
+
+Export a CHAI Applied Model Card-aligned JSON file (debug/reference).
 
 ##### to_raic_checkpoint_1()
 
@@ -806,7 +822,7 @@ faircareai audit DATA_PATH [OPTIONS]
 | `-t`, `--target-col` | Target/outcome column name (required) | `-t readmit_30d` |
 | `-a`, `--attributes` | Sensitive attribute (repeatable) | `-a race -a sex` |
 | `-o`, `--output` | Output file path | `-o report.html` |
-| `--format` | Output format (html, pdf, pptx, json, png, model-card, chai-model-card, raic-checklist, repro-bundle) | `--format pdf` |
+| `--format` | Output format (html, pdf, pptx, json, png, model-card, chai-model-card, chai-model-card-json, raic-checklist, repro-bundle) | `--format pdf` |
 | `--persona` | Output persona (data_scientist, governance) | `--persona governance` |
 | `--include-optional` | Include OPTIONAL metrics (data scientist) | `--include-optional` |
 | `--seed` | Random seed for bootstrap | `--seed 42` |

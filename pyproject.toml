@@ -87,6 +87,10 @@ export = [
 	"kaleido>=0.2.1,<1.0.0",  # Static Plotly image export (PNG)
 ]
 
+compliance = [
+    "xmlschema>=2.5",
+]
+
 dev = [
     "pytest>=7.4.0",
     "pytest-cov>=4.1.0",
@@ -97,7 +101,7 @@ dev = [
 
 # All optional dependencies
 all = [
-    "faircareai[export,dev]",
+    "faircareai[export,dev,compliance]",
 ]
 
 [project.scripts]
@@ -111,6 +115,10 @@ Issues = "https://github.com/sajor2000/faircare_package/issues"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/faircareai"]
+include = ["src/faircareai/data/**"]
+
+[tool.hatch.build.targets.sdist]
+include = ["src/faircareai/data/**"]
 
 # ==============================================================================
 # Pytest Configuration

@@ -77,6 +77,14 @@ python -m playwright install chromium  # Required for PDF generation
 
 PNG export uses Kaleido for static Plotly rendering (included in `faircareai[export]`).
 
+### With Compliance Validation (CHAI XML Schema)
+
+```bash
+pip install "faircareai[compliance]"
+```
+
+Installs `xmlschema` to validate CHAI model card XML against the v0.1 XSD.
+
 ### Development Installation
 
 ```bash
@@ -394,7 +402,8 @@ results.to_pptx("governance_deck.pptx")
 
 # Model card + reproducibility bundle
 results.to_model_card("model_card.md")
-results.to_chai_model_card("chai_model_card.json")
+results.to_chai_model_card("chai_model_card.xml")
+results.to_chai_model_card_json("chai_model_card.json")
 results.to_raic_checkpoint_1("raic_checkpoint_1.json")
 results.to_reproducibility_bundle("reproducibility.json")
 
@@ -906,7 +915,7 @@ faircareai audit predictions.parquet -p risk_score -t outcome --threshold 0.3
 | `-t`, `--target-col` | Target/outcome column name | `-t readmit_30d` |
 | `-a`, `--attributes` | Sensitive attribute (repeatable) | `-a race -a sex` |
 | `-o`, `--output` | Output file path | `-o report.html` |
-| `--format` | Output format (html, pdf, pptx, json, png, model-card, chai-model-card, raic-checklist, repro-bundle) | `--format pdf` |
+| `--format` | Output format (html, pdf, pptx, json, png, model-card, chai-model-card, chai-model-card-json, raic-checklist, repro-bundle) | `--format pdf` |
 | `--persona` | Output persona (data_scientist, governance) | `--persona governance` |
 | `--include-optional` | Include OPTIONAL metrics (data scientist) | `--include-optional` |
 | `--seed` | Random seed for bootstrap | `--seed 42` |

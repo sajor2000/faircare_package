@@ -134,13 +134,15 @@ def dashboard(port: int, host: str) -> None:
             "png",
             "model-card",
             "chai-model-card",
+            "chai-model-card-json",
             "raic-checklist",
             "repro-bundle",
         ],
         case_sensitive=False,
     ),
     help=(
-        "Output format (html, pdf, pptx, json, png, model-card, chai-model-card, raic-checklist, repro-bundle). "
+        "Output format (html, pdf, pptx, json, png, model-card, chai-model-card, "
+        "chai-model-card-json, raic-checklist, repro-bundle). "
         "Overrides file suffix if provided."
     ),
 )
@@ -314,7 +316,9 @@ def audit(
 
         if fmt == "model-card":
             fmt_ext = "md"
-        elif fmt in {"chai-model-card", "raic-checklist"}:
+        elif fmt == "chai-model-card":
+            fmt_ext = "xml"
+        elif fmt in {"chai-model-card-json", "raic-checklist"}:
             fmt_ext = "json"
         elif fmt == "png":
             fmt_ext = "zip"
@@ -337,7 +341,12 @@ def audit(
         # Infer format from suffix if not explicitly provided
         if fmt is None and output_path is not None:
             inferred = output_path.suffix.lstrip(".").lower()
-            fmt = "model-card" if inferred in {"md", "markdown"} else inferred
+            if inferred in {"md", "markdown"}:
+                fmt = "model-card"
+            elif inferred == "xml":
+                fmt = "chai-model-card"
+            else:
+                fmt = inferred
 
         console.print(f"\n[bold]Exporting to {output_path}...[/bold]")
 
@@ -376,6 +385,8 @@ def audit(
                 results.to_model_card(str(output_path))
             elif fmt == "chai-model-card":
                 results.to_chai_model_card(str(output_path))
+            elif fmt == "chai-model-card-json":
+                results.to_chai_model_card_json(str(output_path))
             elif fmt == "raic-checklist":
                 results.to_raic_checkpoint_1(str(output_path))
             elif fmt == "repro-bundle":
