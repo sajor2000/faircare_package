@@ -36,6 +36,8 @@ def test_raic_checklist_full_length(raic_results: AuditResults, tmp_path: Path) 
 
     ids = {item["id"] for item in criteria}
     assert "AC1.CR79" in ids
+    cr1 = next(item for item in criteria if item["id"] == "AC1.CR1")
+    assert "intended use" in cr1["summary"].lower()
 
     statuses = {item["status"] for item in criteria}
     assert "MET" in statuses

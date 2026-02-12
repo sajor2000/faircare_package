@@ -1,0 +1,719 @@
+{
+  "version": "v0.3",
+  "last_revised": "2024-06-26",
+  "source_url": "https://chai.org/wp-content/uploads/2025/02/Responsible-AI-Checkpoint-1-CHAI-Responsible-AI-Checklist.pdf",
+  "criteria": [
+    {
+      "id": "AC1.CR1",
+      "summary": "Based on its intended use, is there evidence that the AI solution directly targets the stated problem?"
+    },
+    {
+      "id": "AC1.CR2",
+      "summary": "Have human factors principles and recognized usability heuristics been explicitly considered and applied during the design and development processes?"
+    },
+    {
+      "id": "AC1.CR3",
+      "summary": "Is there a well-defined target population for the model?"
+    },
+    {
+      "id": "AC1.CR4",
+      "summary": "Has the user base of the AI solution been clearly defined?"
+    },
+    {
+      "id": "AC1.CR5",
+      "summary": "Has a joint plan been implemented between the vendor and buyer to align expectations with site-based requirements?"
+    },
+    {
+      "id": "AC1.CR6",
+      "summary": "Do all parties involved in the development and deployment of the health AI solution, including third-party vendors and consultants, understand their roles and responsibilities outlined in the change management plan concerning data governance, data engineering, and data quality, and are appropriate agreements in place?"
+    },
+    {
+      "id": "AC1.CR7",
+      "summary": "Is there a designated committee or group responsible for monitoring data, with clearly established roles, responsibilities, and reporting structures documented?"
+    },
+    {
+      "id": "AC1.CR8",
+      "summary": "If a dedicated committee or group is deemed unnecessary for monitoring the AI solution, is there a documented justification explaining why they are not needed, ensuring transparency in decision-making regarding data monitoring?"
+    },
+    {
+      "id": "AC1.CR9",
+      "summary": "Have roles and responsibilities been assigned to foster transparency and trust in the AI solution, along with a means to assess adherence to these roles and the level of system understanding among users and stakeholders?"
+    },
+    {
+      "id": "AC1.CR10",
+      "summary": "Have roles and responsibilities been clearly defined for addressing issues related to data input and model output deviations that may pose safety risks?"
+    },
+    {
+      "id": "AC1.CR11",
+      "summary": "Are standardized definitions for \"adverse event\" and \"serious adverse event\" uniformly adopted within the organization, and are events captured according to those definitions, with mechanisms in place to ensure timely detection and reporting?"
+    },
+    {
+      "id": "AC1.CR12",
+      "summary": "Is there a well-defined process for reporting adverse events and safety issues to the developer, implementer, and relevant regulatory agencies as applicable, including information on apparent causes, correctability, and impact on patient care?"
+    },
+    {
+      "id": "AC1.CR13",
+      "summary": "Are contingency plans established for identifying potential adverse events, including protocols for triggering backup plans, initiating safety investigations, and determining whether the AI continues to operate, needs refinement, or requires discontinuation?"
+    },
+    {
+      "id": "AC1.CR14",
+      "summary": "Has a comprehensive assessment been conducted to ensure compliance with federal rules and regulations, e.g. determining whether the health AI solution falls under the FDA's oversight (as guided by the FDA’s Digital Health Policy Navigator), and establishing clear plans for adherence to applicable local regulations?"
+    },
+    {
+      "id": "AC1.CR15",
+      "summary": "Have legal and ethical considerations been thoroughly addressed regarding patient safety in the AI solution and workflow design? (e.g., Are ONC and HHS transparency and interoperability regulations observed where applicable? Are there plans for scenarios where the model is not FDA-approved or faces an FDA recall? Are there existing cases or lawsuits that could impact operations, and will patients be informed about the use of AI to ensure compliance and coverage in case of adverse events? Are local laws and FDA guidance regarding informed consent taken into account, and are procedures established to comply with these laws?)"
+    },
+    {
+      "id": "AC1.CR16",
+      "summary": "Are there mechanisms in place to comply with federal and local laws and regulations governing safety reporting, ensuring that safety issues are promptly and appropriately disclosed?"
+    },
+    {
+      "id": "AC1.CR17",
+      "summary": "Does the deployment of this new health AI solution necessitate classification as human subjects research, and if so, have all necessary IRB requirements been met to ensure compliance?"
+    },
+    {
+      "id": "AC1.CR18",
+      "summary": "Are there comprehensive data governance and change management plans implemented to foster accountability and minimize safety risks?"
+    },
+    {
+      "id": "AC1.CR19",
+      "summary": "Do policies address the management of data processing authorization and revocation, including individual consent where appropriate?"
+    },
+    {
+      "id": "AC1.CR20",
+      "summary": "Are mechanisms in place to incorporate feedback on privacy preferences, using methods such as surveys, focus groups, generative AI learning models, and user interactions, ensuring that privacy considerations are effectively integrated into the design and implementation stages of the AI solution?"
+    },
+    {
+      "id": "AC1.CR21",
+      "summary": "Do policies address the management of individuals' privacy and data processing preferences?"
+    },
+    {
+      "id": "AC1.CR22",
+      "summary": "Do policies address how data will be managed to minimize privacy and cybersecurity risks and meet defined system requirements, adhering to data retention and data quality management standards?"
+    },
+    {
+      "id": "AC1.CR23",
+      "summary": "Can the data be managed in a manner consistent with established policies informed by privacy and cybersecurity risks?"
+    },
+    {
+      "id": "AC1.CR24",
+      "summary": "Is the AI data lineage and provenance auditable by independent third parties, ensuring transparency and accountability?"
+    },
+    {
+      "id": "AC1.CR25",
+      "summary": "Is there documentation detailing the provenance, transformations, usage, and dependencies of the data, enabling traceability of model decisions back to specific points in the data lineage?"
+    },
+    {
+      "id": "AC1.CR26",
+      "summary": "Is there a scheduled plan in place for conducting regular audits of data lineage, ensuring that the documentation remains accurate and up to date?"
+    },
+    {
+      "id": "AC1.CR27",
+      "summary": "Is there a robust tracking process to maintain version control for datasets, ensuring that changes are recorded and traceable?"
+    },
+    {
+      "id": "AC1.CR28",
+      "summary": "Is there a clear process to notify end users of any changes made to datasets after deployment, ensuring transparency and accountability in version management?"
+    },
+    {
+      "id": "AC1.CR29",
+      "summary": "Is there an audit trail and governance structure established to monitor data privacy outputs, ensuring compliance with regulations, detecting breaches, and allowing independent review of who can access to the health AI solution?"
+    },
+    {
+      "id": "AC1.CR30",
+      "summary": "Do the AI system data stores implement measures to protect confidentiality and integrity, safeguarding against unauthorized access and data leaks?"
+    },
+    {
+      "id": "AC1.CR31",
+      "summary": "Does the AI network employ mechanisms to ensure the confidentiality and integrity of data transfer, mitigating the risk of unauthorized access or data leaks?"
+    },
+    {
+      "id": "AC1.CR32",
+      "summary": "Is there justification and documentation for the types of data manipulation employed, such as feature engineering, data cleaning, text preprocessing, etc., ensuring transparency into the rationale behind data manipulation decisions?"
+    },
+    {
+      "id": "AC1.CR33",
+      "summary": "Are the size and interoperability of training and testing datasets adequate to develop a high-quality model, representing the targeted patient population?"
+    },
+    {
+      "id": "AC1.CR34",
+      "summary": "Is there documentation detailing how, for what purpose, from what source(s), and under what circumstances the data elements were acquired for the AI solution (including the manner and mechanism of consent where appropriate); and does this documentation include information about the individuals involved in the data collection process and the categories of individuals whose data are being utilized?"
+    },
+    {
+      "id": "AC1.CR35",
+      "summary": "Is there adequate justification provided for data selection and curation, ensuring that the data used for training and testing the model is appropriate for evaluating fairness?"
+    },
+    {
+      "id": "AC1.CR36",
+      "summary": "Are the model type, building procedures (including predictor selection), and internal validation methods well-defined?"
+    },
+    {
+      "id": "AC1.CR37",
+      "summary": "Has the model design been thoroughly justified, including comparisons to other benchmarks to validate the chosen architecture?"
+    },
+    {
+      "id": "AC1.CR38",
+      "summary": "Is there evidence or rationale provided to confirm that the chosen model complexity is justified, affirming it is not surpassed by a simpler alternative (such as rule-based filters), ensuring that it results in improved outcomes?"
+    },
+    {
+      "id": "AC1.CR39",
+      "summary": "Is there a method for quantifying the adaptability of the system to changes and competitive pressures, as well as measuring the system's performance as its complexity increases?"
+    },
+    {
+      "id": "AC1.CR40",
+      "summary": "Will all the inputs necessary for model predictions be readily available during deployment, especially if the model is trained on retrospective data (e.g., considering that note-coded diagnoses may only be available after a hospitalization has ended, etc.)?"
+    },
+    {
+      "id": "AC1.CR41",
+      "summary": "Are all predictors used in model development or validation meticulously documented, along with details of their measurement?"
+    },
+    {
+      "id": "AC1.CR42",
+      "summary": "Do the features selected for the model adhere to meta-level requirements, aligning with the overarching design and architectural choices?"
+    },
+    {
+      "id": "AC1.CR43",
+      "summary": "Do the features adhere to meta-level requirements set for data and metadata in the development of the model?"
+    },
+    {
+      "id": "AC1.CR44",
+      "summary": "Have the limitations of the data been thoroughly documented, including factors such as incompleteness, noise and errors, temporal bias, sample size, and any other relevant factors?"
+    },
+    {
+      "id": "AC1.CR45",
+      "summary": "Has comprehensive consideration been given to all potential data sources for each input, ensuring their availability and consistency during deployment (e.g., considering that a cardiac ejection fraction measurement could be in a separate physician note, or that sites may differ in how they collect it, etc.)?"
+    },
+    {
+      "id": "AC1.CR46",
+      "summary": "Are mechanisms implemented to ensure fairness in the AI system's decision-making processes, particularly during feature extraction?"
+    },
+    {
+      "id": "AC1.CR47",
+      "summary": "Has the dataset undergone thorough scrutiny to identify and address biases associated with factors such as age, sex, ethnicity, etc.?"
+    },
+    {
+      "id": "AC1.CR48",
+      "summary": "Does the AI/ML system explicitly or implicitly utilize protected characteristics or related features/proxies to make or recommend decisions?"
+    },
+    {
+      "id": "AC1.CR49",
+      "summary": "If protected characteristics are used in the AI solution, is the process clinically justified and deemed necessary?"
+    },
+    {
+      "id": "AC1.CR50",
+      "summary": "If the use of protected characteristics, correlated variables, or proxies is clinically justified, is the direction and magnitude of their effect known and documented?"
+    },
+    {
+      "id": "AC1.CR51",
+      "summary": "If protected characteristics contribute to AI decisions, do their contributions align with improving fairness as predefined?"
+    },
+    {
+      "id": "AC1.CR52",
+      "summary": "Have site-based differences in data distributions been thoroughly evaluated to identify potential bias or issues in data quality?"
+    },
+    {
+      "id": "AC1.CR53",
+      "summary": "Is there evidence of an interaction between data quality or data type and relevant socio-demographic subgroups (e.g., whether Black patients or older patients are more likely to have different, missing, or lower quality data, or if there are disparities in data acquisition methods, such as MRI scanner strength, across different demographic groups)?"
+    },
+    {
+      "id": "AC1.CR54",
+      "summary": "Are proxies or composite scores being used as inputs or outputs of the model?"
+    },
+    {
+      "id": "AC1.CR55",
+      "summary": "If proxies or composite scores are used as inputs or outputs of the model, have they been evaluated for bias across relevant socio-demographic subgroups?"
+    },
+    {
+      "id": "AC1.CR56",
+      "summary": "If proxies or composite scores are used as inputs or outputs of the model, could their use result in unintentional exclusion or differential treatment of already disadvantaged groups (e.g., cost/utilization as a proxy for deciding on advanced care coordination)?"
+    },
+    {
+      "id": "AC1.CR57",
+      "summary": "Is there a \"ground truth\" that can be used instead of a proxy or composite score?"
+    },
+    {
+      "id": "AC1.CR58",
+      "summary": "If there is no data available for a \"ground truth\" apart from a proxy or composite score, has the data been checked for systematic differences by relevant socio-demographic subgroups that could be related to issues with access – especially if the goal of the model is to provide care coordination, clinical care, or need-based services (e.g., cost/utilization as a proxy for deciding on advanced care coordination)?"
+    },
+    {
+      "id": "AC1.CR59",
+      "summary": "Is there a protocol in place for addressing exception populations that are not under hard exclusion rules but may correspond with decreased validity?"
+    },
+    {
+      "id": "AC1.CR60",
+      "summary": "Have considerations for comorbidities and sociocultural influences been adequately addressed and accounted for in the training data, ensuring transparency and relevance to the target population?"
+    },
+    {
+      "id": "AC1.CR61",
+      "summary": "Has consideration been given to any aspects of the dataset's composition, collection, or processing that might impact future uses, and are there any tasks for which the data should not be used?"
+    },
+    {
+      "id": "AC1.CR62",
+      "summary": "Is there a plan in place to update the dataset, and if so, is the appropriate interval clearly documented?"
+    },
+    {
+      "id": "AC1.CR63",
+      "summary": "Are health and data standards, including data provenance, defined and documented?"
+    },
+    {
+      "id": "AC1.CR64",
+      "summary": "Has the comprehensiveness of training and testing data been evaluated to gauge the model's performance across various subgroups, and does the dataset provide information on relevant socio-demographic subgroups for fairness evaluation?"
+    },
+    {
+      "id": "AC1.CR65",
+      "summary": "Is the data source known for its high quality and consistency, without significant errors or inconsistencies?"
+    },
+    {
+      "id": "AC1.CR66",
+      "summary": "Has a comprehensive strategy been implemented to handle missing data effectively?"
+    },
+    {
+      "id": "AC1.CR67",
+      "summary": "Have measures been taken to prevent automation surprises stemming from data anomalies or unexpected patterns?"
+    },
+    {
+      "id": "AC1.CR68",
+      "summary": "Are there significant disparities, such as missing data, between the representativeness of input or output distributions in the training or testing datasets and the target population, indicating potential disparities that need to be addressed?"
+    },
+    {
+      "id": "AC1.CR69",
+      "summary": "Are there likely differences in data quality across sites, particularly for clinical data (e.g., variations in the type of MRI scanner, method of heart rate measurements, or type of assay used, etc.)?"
+    },
+    {
+      "id": "AC1.CR70",
+      "summary": "Are there established thresholds for data quality, ensuring that the AI solution remains safe and operational in the event of noted defects?"
+    },
+    {
+      "id": "AC1.CR71",
+      "summary": "Are end users and appropriate stakeholders actively engaged in identifying and addressing data quality issues, including safety risks, during data engineering and model refinement?"
+    },
+    {
+      "id": "AC1.CR72",
+      "summary": "Are end users actively involved in the development of the model to ensure appropriate functionality and clinical fit, thereby enhancing end user understanding and acceptance?"
+    },
+    {
+      "id": "AC1.CR73",
+      "summary": "Can the goals of the AI solution be quantified to provide measurable objectives, and is there a clearly documented explanation of the performance metrics used for the model?"
+    },
+    {
+      "id": "AC1.CR74",
+      "summary": "Has cross-validation been conducted using k-fold validation, with an appropriate value of k defined considering the sample size, as well as cross-validation techniques leaving one subgroup out?"
+    },
+    {
+      "id": "AC1.CR75",
+      "summary": "Is there representative data available (which is separable) to adequately train and test the model's robustness in handling different scenarios and variations in data representation?"
+    },
+    {
+      "id": "AC1.CR76",
+      "summary": "Has the model been tuned or calibrated to the specific local setting or population based retrospective (not current) data?"
+    },
+    {
+      "id": "AC1.CR77",
+      "summary": "Has the model been tuned or calibrated to the specific local setting or population based on current (not retrospective) data?"
+    },
+    {
+      "id": "AC1.CR78",
+      "summary": "Have all predictors used in developing or validating the model, including details on how and when they were measured, been documented?"
+    },
+    {
+      "id": "AC1.CR79",
+      "summary": "Have clear decision thresholds for the model been established to guide its usage effectively?"
+    },
+    {
+      "id": "AC1.CR80",
+      "summary": "Are there limitations to the interpretability and generalizability of the AI system across the entire population sample and in separate socio-demographic subgroups, and have these limitations been clearly documented?"
+    },
+    {
+      "id": "AC1.CR81",
+      "summary": "If there are biases in model performance by subgroup or in retrospective data from different settings that cannot be statistically addressed or resolved through procedural changes, have these limitations been clearly documented?"
+    },
+    {
+      "id": "AC1.CR82",
+      "summary": "If there are unaddressable limitations in sample size, power for parity-based and impartiality-based analyses, confounds, etc., have these limitations and associated risks been clearly identified and documented?"
+    },
+    {
+      "id": "AC1.CR83",
+      "summary": "Have confidence intervals been documented, including explanations of uncertainty whenever possible?"
+    },
+    {
+      "id": "AC1.CR84",
+      "summary": "Is there a defined protocol for disclosing misses, errors, or hallucinations, accompanied by an explanation of what they mean for end users?"
+    },
+    {
+      "id": "AC1.CR85",
+      "summary": "Has a confusion or error matrix been generated to evaluate model performance?"
+    },
+    {
+      "id": "AC1.CR86",
+      "summary": "Can the explainability of the AI model be effectively measured to enhance understanding and trust among users, patients, and other stakeholders?"
+    },
+    {
+      "id": "AC1.CR87",
+      "summary": "Has the AI solution undergone rigorous robustness testing, and is the testing process thoroughly reported, aligning with the overarching consideration to instill trust in the technology?"
+    },
+    {
+      "id": "AC1.CR88",
+      "summary": "In predictive models, has the model calibration been thoroughly evaluated and documented across the entire sample, as well as between different sites, settings, and subgroups to ensure fairness and to minimize bias?"
+    },
+    {
+      "id": "AC1.CR89",
+      "summary": "Given assessment, does the AI solution show evidence of improvement over existing standard practices, as outlined in the problem statement and organizational objectives?"
+    },
+    {
+      "id": "AC1.CR90",
+      "summary": "Are counterfactual tests conducted both with and without relevant socio-demographic subgroups to evaluate model performance?"
+    },
+    {
+      "id": "AC1.CR91",
+      "summary": "Does the AI/ML system maintain calibration by producing outcomes that are independent of protected classes such as race, sex (or their proxies), disability, or variables highly correlated with protected classes?"
+    },
+    {
+      "id": "AC1.CR92",
+      "summary": "Are measures of parity, beyond overall accuracy, selected to consider the scope, degree, and direction of impact that errors or accurate predictions can have on individuals or subgroups?"
+    },
+    {
+      "id": "AC1.CR93",
+      "summary": "Are the selected measures of parity consistent with the definition of fairness predefined in stage 1 of the evaluation process?"
+    },
+    {
+      "id": "AC1.CR94",
+      "summary": "Has the model been tested using samples outside the distribution of the training data, and are the training and testing samples independent of each other to ensure unbiased model evaluation?"
+    },
+    {
+      "id": "AC1.CR95",
+      "summary": "Is model performance and parity -- including inputs, outputs, and outcomes -- assessed and documented, ensuring transparency and continuity of care?"
+    },
+    {
+      "id": "AC1.CR96",
+      "summary": "Has the model's performance and parity been evaluated using locally representative data, aligning with the population where it will be deployed, to mitigate bias and safety risks?"
+    },
+    {
+      "id": "AC1.CR97",
+      "summary": "Has a preliminary study of the effectiveness of the AI solution been reported?"
+    },
+    {
+      "id": "AC1.CR98",
+      "summary": "Are the results of the model’s performance deemed acceptable according to both external and internal standards?"
+    },
+    {
+      "id": "AC1.CR99",
+      "summary": "Have metrics relevant to the population to be served (e.g., Social Determinants of Health) been assessed?"
+    },
+    {
+      "id": "AC1.CR100",
+      "summary": "Is the software accompanied by a clear and easily understandable description detailing how the AI model was developed, its intended purpose, limitations, and associated safety risks (including information such as the type of model, dataset description, results from clinical studies, and identification of underrepresented subpopulations in the training and test sets)?"
+    },
+    {
+      "id": "AC1.CR101",
+      "summary": "Is there a predefined plan in place, along with the availability of data, to evaluate how the use of the AI solution may improve impartiality in the distribution of resources, access to care, clinical operations, and/or real-world clinical outcomes?"
+    },
+    {
+      "id": "AC1.CR102",
+      "summary": "Beyond model performance metrics, has a measure of real-world/clinical outcome been clearly defined, along with adequate justification for the selection of that measure?"
+    },
+    {
+      "id": "AC1.CR103",
+      "summary": "Will the real-world/clinical outcome measure be available for evaluation within an adequate time frame and in a manner that accurately represents the target population?"
+    },
+    {
+      "id": "AC1.CR104",
+      "summary": "Will real-world/clinical outcomes be systematically compared for parity across all relevant socio-demographic subgroups, ensuring fairness and addressing potential bias?"
+    },
+    {
+      "id": "AC1.CR105",
+      "summary": "Has the usability of the product, system, or software design been assessed and documented?"
+    },
+    {
+      "id": "AC1.CR106",
+      "summary": "Has a workflow integration assessment been conducted and documented, accounting for the flow of people and tasks across both physical and digital environments, ensuring seamless integration of the AI solution?"
+    },
+    {
+      "id": "AC1.CR107",
+      "summary": "Does the implementation of the AI solution impact patient-clinician interaction (e.g., flow of discussion, process for decision-making, the questions discussed)?"
+    },
+    {
+      "id": "AC1.CR108",
+      "summary": "Is there a documented assessment of team activities, including clinician-clinician and patient-clinician interactions, to understand the potential impacts of the AI solution integration into the workflow?"
+    },
+    {
+      "id": "AC1.CR109",
+      "summary": "Is there an assessment of all individuals whose work will be influenced by the use of the AI solution, and has an assessment been conducted to understand the impact on each group?"
+    },
+    {
+      "id": "AC1.CR110",
+      "summary": "Has the AI solution been evaluated for safety and efficacy on the local target population to ensure its suitability for piloting and deployment?"
+    },
+    {
+      "id": "AC1.CR111",
+      "summary": "To ensure effectiveness, safety, and risk management, did verification and validation (V&V) activities include scenarios covering the clinical use case and environment, such as clinical evaluation on a subset of patients (chart reviews, etc.), usability testing/end user acceptance testing (UAT), and structured human factors testing?"
+    },
+    {
+      "id": "AC1.CR112",
+      "summary": "Did verification and validation (V&V) activities include performing socio-technical, technology, and system environment testing (sometimes referred to as acceptance or installation testing) to ensure compatibility and reliability in the clinical setting?"
+    },
+    {
+      "id": "AC1.CR113",
+      "summary": "Has the AI solution been assessed to ensure its accessibility to all intended users, promoting impartiality in its usage?"
+    },
+    {
+      "id": "AC1.CR114",
+      "summary": "Have transparency measures been defined to accommodate different user-facing views of model outcomes (e.g., providing options versus automatically ranking or triaging), ensuring that bias is mitigated?"
+    },
+    {
+      "id": "AC1.CR115",
+      "summary": "As part of assessing the usability of the AI tool, is there evidence of acceptable usability (e.g., improved user efficiency, improved user effectiveness, and/or user satisfaction?)"
+    },
+    {
+      "id": "AC1.CR116",
+      "summary": "Do user access control policies and procedures for both local and remote connections to the AI environment establish a lifecycle approach to account management, incorporating the principles of least privilege and separation of duties?"
+    },
+    {
+      "id": "AC1.CR117",
+      "summary": "Are there user access control records for the AI environment, showing that account management is consistently managed according to established policies and procedures?"
+    },
+    {
+      "id": "AC1.CR118",
+      "summary": "Does the information flow configuration of the AI environment demonstrate the implementation of network protections, such as segregation or segmentation, to safeguard against unauthorized access?"
+    },
+    {
+      "id": "AC1.CR119",
+      "summary": "Do user access and network controls maintain a clear separation between AI development and testing environments?"
+    },
+    {
+      "id": "AC1.CR120",
+      "summary": "Are there established processes for third parties to report potential security vulnerabilities, risks, or biases in the AI system?"
+    },
+    {
+      "id": "AC1.CR121",
+      "summary": "Are there processes in place for mitigating security concerns raised by third-party AI systems or components?"
+    },
+    {
+      "id": "AC1.CR122",
+      "summary": "Does the implementing organization have established policies and procedures that mandate third-party solution suppliers to meet specific privacy and cybersecurity objectives?"
+    },
+    {
+      "id": "AC1.CR123",
+      "summary": "Has a security and privacy risk assessment been conducted to evaluate third-party solution providers' risks in the AI environment?"
+    },
+    {
+      "id": "AC1.CR124",
+      "summary": "Are there records of scheduled audits or audits conducted on third parties in the AI environment to ensure compliance with contractual obligations around cybersecurity and privacy?"
+    },
+    {
+      "id": "AC1.CR125",
+      "summary": "If a third party has contributed to the AI system or its components, is there sufficient documentation available on cybersecurity and privacy, and is it at an appropriate level of explainability or interpretability?"
+    },
+    {
+      "id": "AC1.CR126",
+      "summary": "Are there designated personnel responsible for assessing the privacy and security of third-party systems or components?"
+    },
+    {
+      "id": "AC1.CR127",
+      "summary": "Is there a manufacturer's description of a safety-focused framework and process for measuring, analyzing, and improving the AI solution, and does the developer provide a risk management plan articulating risks, potential issues, and mitigation strategies?"
+    },
+    {
+      "id": "AC1.CR128",
+      "summary": "Does the developer provide a risk management plan outlining key AI-related safety risks that have been identified and mitigated across the supply chain or in other organizations?"
+    },
+    {
+      "id": "AC1.CR129",
+      "summary": "Did verification and validation (V&V) findings such as clinical evaluation and usability testing inform the development of the risk management plan, the training plan and the instructions for use?"
+    },
+    {
+      "id": "AC1.CR130",
+      "summary": "Are there defined processes to manage risks from changes to the system, workflow, environment, and data, ensuring that potential safety concerns are effectively addressed, and are Corrective and Preventative Actions (CAPAs) implemented to address identified safety issues and prevent recurrence?"
+    },
+    {
+      "id": "AC1.CR131",
+      "summary": "Will privacy and security risk assessments be conducted again post-implementation to assess whether the implementation has altered the risks and to address any new concerns?"
+    },
+    {
+      "id": "AC1.CR132",
+      "summary": "Did verification and validation (V&V) activities include assessing the safety elements of the AI software to demonstrate proper functioning, including patient safety and clinical use risk elements?"
+    },
+    {
+      "id": "AC1.CR133",
+      "summary": "Does the risk management strategy include evaluating privacy and security risks to both individuals and the organization, ensuring comprehensive coverage of potential risks?"
+    },
+    {
+      "id": "AC1.CR134",
+      "summary": "Are model procedures, risks, benefits, and limitations thoroughly understood and reviewed by all relevant stakeholders before advancing the model into the pilot stage, ensuring transparency, trust and alignment of expectations?"
+    },
+    {
+      "id": "AC1.CR135",
+      "summary": "Has the organization incorporated privacy attack mitigations like differential privacy or other Privacy-Enhancing Technologies (PETs) into its AI environment to safeguard against privacy breaches and minimize privacy and cybersecurity risks through system architecture design?"
+    },
+    {
+      "id": "AC1.CR136",
+      "summary": "Have privacy and security requirements been clearly defined, and have legal staff been consulted to ensure compliance along those lines with relevant legal, regulatory, and contractual obligations?"
+    },
+    {
+      "id": "AC1.CR137",
+      "summary": "Does the AI system output directly or indirectly reveal identifiable individuals or behaviors, and are measures taken within the system architecture design and through the use of privacy-enhancing technologies to minimize associated privacy and cybersecurity risks?"
+    },
+    {
+      "id": "AC1.CR138",
+      "summary": "Did verification and validation (V&V) activities include establishing acceptable failure behavior (\"fail safe\") in the clinical environment to mitigate potential risks?"
+    },
+    {
+      "id": "AC1.CR139",
+      "summary": "Are risk assessment reports available, detailing deficiencies in performance and recommendations for remediation, and are they reviewed for safety and security risks that can be mitigated by system requirements?"
+    },
+    {
+      "id": "AC1.CR140",
+      "summary": "Has a competitive analysis been conducted, comparing the success of risk mitigation efforts with the performance of competitors, to inform risk mitigation efforts?"
+    },
+    {
+      "id": "AC1.CR141",
+      "summary": "Are plans in place for document control, record management, configuration management, access control, and the management of outsourced processes, ensuring consistency and integrity in risk management procedures?"
+    },
+    {
+      "id": "AC1.CR142",
+      "summary": "Is there traceability between 1) the AI system requirements and 2) privacy and security risks and obligations, ensuring that implemented controls align with identified risks and legal, regulatory, and contractual obligations?"
+    },
+    {
+      "id": "AC1.CR143",
+      "summary": "Are privacy and security risk assessments from stage 1 reviewed for risks that can be mitigated by system requirements, ensuring that the system design adequately addresses identified risks?"
+    },
+    {
+      "id": "AC1.CR144",
+      "summary": "Does the system architecture include features specifically designed to mitigate privacy and cybersecurity risks?"
+    },
+    {
+      "id": "AC1.CR145",
+      "summary": "Is completed training on cybersecurity and privacy documented for relevant personnel?"
+    },
+    {
+      "id": "AC1.CR146",
+      "summary": "Have compliance requirements, along with exceptions to those requirements, been established for all relevant stakeholders?"
+    },
+    {
+      "id": "AC1.CR147",
+      "summary": "Is there a clear description of the development environment, offering insight into the conditions in which the AI solution was created, as part of assessing how the tool should be tailored for the specific work context of the implementing organization?"
+    },
+    {
+      "id": "AC1.CR148",
+      "summary": "Has an assessment been carried out to compare and evaluate the disparities between the development environment and the organizational environment where the AI solution will be implemented?"
+    },
+    {
+      "id": "AC1.CR149",
+      "summary": "Are designated personnel responsible for integrating contextual factors into both the design and implementation of the AI system, ensuring that demographic information and privacy preferences are adequately considered?"
+    },
+    {
+      "id": "AC1.CR150",
+      "summary": "Has the organization identified and documented the expected and acceptable context of use for the AI system, taking into account demographics, privacy interests, data sensitivity, visibility of data processing, and other relevant factors?"
+    },
+    {
+      "id": "AC1.CR151",
+      "summary": "Following assessment of differences between development and implementation environments, especially for purchasing organizations, are changes needed to tailor the AI system to user needs and work context at the implementing organization?"
+    },
+    {
+      "id": "AC1.CR152",
+      "summary": "Is there a centralized process for reporting the risk impact of changes to the system, environment, and data, encompassing modifications to code, architecture, workflow, etc., to ensure proactive risk management?"
+    },
+    {
+      "id": "AC1.CR153",
+      "summary": "Is there a clearly defined protocol for disclosing safety issues, providing channels for reporting, receiving, and responding to disclosures, ensuring transparency and accountability in handling ethical and legal challenges?"
+    },
+    {
+      "id": "AC1.CR154",
+      "summary": "Is there a protocol to ensure that developers, implementers and relevant stakeholders receive timely information about safety issues, facilitating collaboration and addressing ethical and legal challenges effectively?"
+    },
+    {
+      "id": "AC1.CR155",
+      "summary": "Has the organization established a clear threshold or criteria for determining when safety concerns should be reported, defining specific parameters such as the severity of potential harm to patients, frequency of occurrence, and impact on clinical decision-making?"
+    },
+    {
+      "id": "AC1.CR156",
+      "summary": "Are there clearly defined approval processes and criteria established, specifically involving stakeholder review and approval, outlining the circumstances that would necessitate updates or changes prior to proceeding with the pilot stage?"
+    },
+    {
+      "id": "AC1.CR157",
+      "summary": "Has scalability planning been established to accommodate the targeted population and necessary infrastructure, ensuring effective measurement and scaling of system performance as complexity increases?"
+    },
+    {
+      "id": "AC1.CR158",
+      "summary": "Is there an established process for regularly updating transparency documentation based on newly identified limitations observed during local deployment within the implementer's environment, ensuring ongoing transparency and accuracy?"
+    },
+    {
+      "id": "AC1.CR159",
+      "summary": "Does the development team employ methods such as model cards to inform end users that they are interacting with an AI system, thereby fostering awareness and understanding of the system's capabilities and limitations?"
+    },
+    {
+      "id": "AC1.CR160",
+      "summary": "Does the transparency information provided to users include an explanation of the AI model's limitations and clinical implications, including error rates, contraindications, generalizability, reproducibility, and robustness?"
+    },
+    {
+      "id": "AC1.CR161",
+      "summary": "Has a description of how to use the model been documented, considering the variability of end user expertise to ensure usability and comprehension?"
+    },
+    {
+      "id": "AC1.CR162",
+      "summary": "Is there a method in place to measure the understanding of key actions by end users and key stakeholders based on the AI model's outputs, ensuring consistency with defined limitations and intended use of the AI solution?"
+    },
+    {
+      "id": "AC1.CR163",
+      "summary": "Is there evidence of user or patient trust and its effect on performance and effectiveness of the AI system based on use in a simulated environment?"
+    },
+    {
+      "id": "AC1.CR164",
+      "summary": "Is there a mechanism in place for the deployment team or AI system to provide explanations to end users regarding the rationale and thresholds behind specific decisions or recommendations provided by the AI solution, thereby ensuring transparency, intelligibility, and informed decision-making?"
+    },
+    {
+      "id": "AC1.CR165",
+      "summary": "Is there a clear explanation provided to end users regarding the local validation methods used and the subsequent results, such as training population data, model performance based on socio-demographics, etc.?"
+    },
+    {
+      "id": "AC1.CR166",
+      "summary": "Are there justifications for algorithm logic available for end users to effectively communicate information to patients?"
+    },
+    {
+      "id": "AC1.CR167",
+      "summary": "Do end users and other stakeholders have access to timely feedback channels for reporting ethics and safety concerns, performance issues, and bias or data quality risks?"
+    },
+    {
+      "id": "AC1.CR168",
+      "summary": "Are user feedback strategies designed to be simple, informative, easy, and quick to access and complete, specifically tailored to gather feedback on fairness concerns, thereby ensuring that users can provide feedback without undue burden?"
+    },
+    {
+      "id": "AC1.CR169",
+      "summary": "Will feedback on fairness be reviewed in a timely manner to prevent any existing issues from escalating or causing harm, thus addressing concerns related to fairness promptly and effectively?"
+    },
+    {
+      "id": "AC1.CR170",
+      "summary": "Within the workflow, is there a designated human presence capable of providing oversight, contesting, or overriding the AI output, particularly in the event of safety concerns or significant risks?"
+    },
+    {
+      "id": "AC1.CR171",
+      "summary": "Is the override recorded when an end user makes a decision that deviates from the AI solution's finding or recommendation, thus providing a transparent record of the decision-making process?"
+    },
+    {
+      "id": "AC1.CR172",
+      "summary": "If a human presence is not currently integrated into the workflow, does the implementer organization possess the capability to introduce a human in the loop to contest and override the AI output, ensuring appropriate intervention when necessary?"
+    },
+    {
+      "id": "AC1.CR173",
+      "summary": "Is there a de-implementation plan in place and understood by end users, outlining the process for discontinuing the use of the model when necessary?"
+    },
+    {
+      "id": "AC1.CR174",
+      "summary": "Does the implementer organization have a structured feedback loop and triage process for consistent detection of errors, malfunctions, issues, and defects, facilitating continuous improvement and monitoring of AI solution performance?"
+    },
+    {
+      "id": "AC1.CR175",
+      "summary": "Is there a process in place to detect patterns of patient harm associated with a given AI solution, thereby enabling early intervention and mitigation of potential risks to patient safety?"
+    },
+    {
+      "id": "AC1.CR176",
+      "summary": "Are there established processes to actively and passively collect post-deployment monitoring information, enabling ongoing assessment of AI solution performance and identification of potential safety issues?"
+    },
+    {
+      "id": "AC1.CR177",
+      "summary": "Is there information that should be disclosed to patients at other organizations where the AI solution is deployed, and are there established means for disseminating this information, fostering transparency and accountability across different healthcare settings?"
+    },
+    {
+      "id": "AC1.CR178",
+      "summary": "Is there a clearly documented rationale for determining the level of access patients will have to information about the AI solution and its outputs, considering its impact on patient rights and the potential necessity for consent?"
+    }
+  ]
+}

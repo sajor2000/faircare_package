@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from datetime import datetime
+from importlib import resources
 from pathlib import Path
 from typing import Any
 
@@ -117,31 +118,50 @@ def _auto_evaluable_items(results: AuditResults) -> dict[str, dict[str, Any]]:
     return items
 
 
+def _load_raic_criteria() -> list[dict[str, Any]]:
+    data_path = resources.files("faircareai.data").joinpath("raic/checkpoint_1.json")
+    payload = json.loads(data_path.read_text(encoding="utf-8"))
+    criteria = payload.get("criteria", payload)
+    if not isinstance(criteria, list):
+        raise ValueError("RAIC checklist data is invalid or missing criteria list.")
+    return criteria
+
+
 def generate_raic_checkpoint_1_checklist(results: AuditResults, path: str | Path) -> Path:
     """Generate a RAIC Checkpoint 1 checklist JSON export."""
     path = Path(path)
     now = datetime.now().astimezone().isoformat(timespec="seconds")
 
     auto_items = _auto_evaluable_items(results)
+    catalog = _load_raic_criteria()
     criteria: list[dict[str, Any]] = []
-    for idx in range(1, 179):
-        criteria_id = f"AC1.CR{idx}"
-        if criteria_id in auto_items:
-            criteria.append(auto_items[criteria_id])
+    for item in catalog:
+        criteria_id = item.get("id")
+        if not criteria_id:
             continue
-        criteria.append(
-            {
-                "id": criteria_id,
-                "summary": f"See CHAI RAIC Checkpoint 1 checklist item {criteria_id}.",
-                "status": "NOT_EVALUATED",
-                "evidence": "Manual review required.",
-            }
-        )
+        entry: dict[str, Any] = {
+            "id": criteria_id,
+            "summary": item.get("summary", ""),
+        }
+        if "ls_id" in item:
+            entry["ls_id"] = item["ls_id"]
+        if criteria_id in auto_items:
+            auto = auto_items[criteria_id]
+            entry["status"] = auto["status"]
+            entry["evidence"] = auto["evidence"]
+            if "ls_id" in auto and "ls_id" not in entry:
+                entry["ls_id"] = auto["ls_id"]
+        else:
+            entry["status"] = "NOT_EVALUATED"
+            entry["evidence"] = "Manual review required."
+        criteria.append(entry)
 
     checklist = {
         "raic_checkpoint": "Checkpoint 1",
         "source_url": "https://www.chai.org/workgroup/responsible-ai/responsible-ai-checklists-raic",
         "documentation_url": "https://chai.org/wp-content/uploads/2025/02/Responsible-AI-Checkpoint-1-CHAI-Responsible-AI-Checklist.pdf",
+        "document_version": "v0.3",
+        "last_revised": "2024-06-26",
         "generated_at": now,
         "audit_id": results.audit_id,
         "model_name": results.config.model_name,
